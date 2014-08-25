@@ -52,7 +52,7 @@ namespace yeeSolver
 {
 using namespace PMacc;
 
-
+/*
 template<class BlockDescription_, class CurlType_, class EBox, class BBox>
 __host__ void wrapper_kernelUpdateE(dim3 grid, EBox fieldE, BBox fieldB, MappingDesc cellDescription, uint32_t AREA)
 {
@@ -70,6 +70,7 @@ __host__ void wrapper_kernelUpdateBHalf(BBox fieldB,
                 (this->fieldB->getDeviceDataBox(),
                 this->fieldE->getDeviceDataBox());
 }
+*/
 
 template<class CurlE, class CurlB>
 class YeeSolver
@@ -89,12 +90,12 @@ private:
                 typename CurlB::LowerMargin,
                 typename CurlB::UpperMargin
                 > BlockArea;
-	wrapper_kernelUpdateE(SuperCellSize::toRT().toDim3(), this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox(),cellDescription,AREA);
-/*
+	//wrapper_kernelUpdateE(SuperCellSize::toRT().toDim3(), this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox(),cellDescription,AREA);
+
         __picKernelArea((kernelUpdateE<BlockArea, CurlB>), cellDescription, AREA)
                 (SuperCellSize::toRT().toDim3())
                 (this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox());
-*/
+
     }
 
     template<uint32_t AREA>

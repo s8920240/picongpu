@@ -52,7 +52,7 @@ static __host__ void wrapper_kernelAbsorbBorder(dim3 grid, dim3 block, BoxedMemo
     template<class BoxedMemory>
     static void absorbBorder(uint32_t currentStep, MappingDesc &cellDescription, BoxedMemory deviceBox)
     {
-        VirtualWindow win = MovingWindow::getInstance().getVirtualWindow(currentStep);
+	const uint32_t numSlides = MovingWindow::getInstance().getSlideCounter(currentStep);
         for (uint32_t i = 1; i < NumberOfExchanges<simDim>::value; ++i)
         {
             /* only call for plains: left right top bottom back front*/
@@ -79,7 +79,7 @@ static __host__ void wrapper_kernelAbsorbBorder(dim3 grid, dim3 block, BoxedMemo
                  *      no slide was performed and
                  *      laser init time is not over
                  */
-                if (win.slides == 0 && ((currentStep * DELTA_T) <= laserProfile::INIT_TIME))
+                if (numSlides == 0 && ((currentStep * DELTA_T) <= laserProfile::INIT_TIME))
                 {
                     if (i == TOP) continue; /*disable laser on top side*/
                 }
