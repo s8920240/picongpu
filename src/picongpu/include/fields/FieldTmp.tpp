@@ -106,6 +106,33 @@ namespace picongpu
         __delete( fieldTmp );
     }
 
+
+    template<class Box, class Mapping>
+    __host__ void wrapper_kernelBashValue(dim3 grid, dim3 block, Box fieldTmp,
+                                     Box targetJ,
+                                     DataSpace<simDim> exchangeSize,
+                                     DataSpace<simDim> direction,
+                                     Mapping mapper )
+    {
+        __cudaKernel( kernelBashValue ) (grid, block)  (fieldTmp, targetJ, exchangeSize, direction, mapper );
+    }
+
+    template<class Box, class Mapping>
+    __host__ void wrapper_kernelInsertValue(dim3 grid, dim3 block,  Box fieldTmp,
+                                       Box sourceTmp,
+                                       DataSpace<simDim> exchangeSize,
+                                       DataSpace<simDim> direction,
+                                       Mapping mapper )
+    {
+        __cudaKernel( kernelInsertValue ) (grid, block) ( fieldTmp, sourceTmp, exchangeSize,direction, mapper );
+    }
+
+    template<class BlockDescription_, uint32_t AREA, class TmpBox, class ParBox, class FrameSolver, class Mapping>
+    __host__ void wrapper_kernelComputeSupercells( dim3 grid, dim3 block, TmpBox fieldTmp, ParBox boxPar, FrameSolver frameSolver, Mapping mapper )
+    {
+            __cudaKernel( ( kernelComputeSupercells<BlockDescription_, AREA> ) ) (grid, block)( fieldTmp, boxPar, frameSolver, mapper );	
+    }
+
     template<uint32_t AREA, class FrameSolver, class ParticlesClass>
     void FieldTmp::computeValue( ParticlesClass& parClass, uint32_t )
     {
@@ -123,10 +150,13 @@ namespace picongpu
         __startAtomicTransaction( __getTransactionEvent( ) );
         do
         {
+	wrapper_kernelComputeSupercells<BlockArea, AREA>(mapper.getGridDim( ), mapper.getSuperCellSize( ), tmpBox, pBox, solver, mapper );
+/*
             __cudaKernel( ( kernelComputeSupercells<BlockArea, AREA> ) )
                 ( mapper.getGridDim( ), mapper.getSuperCellSize( ) )
                 ( tmpBox,
                   pBox, solver, mapper );
+*/
         } while( mapper.next( ) );
         __setTransactionEvent( __endTransaction( ) );
     }
@@ -166,6 +196,12 @@ namespace picongpu
         dim3 grid = mapper.getGridDim( );
 
         const DataSpace<simDim> direction = Mask::getRelativeDirections<simDim > ( mapper.getExchangeType( ) );
+	wrapper_kernelBashValue(grid, mapper.getSuperCellSize( ) , fieldTmp->getDeviceBuffer( ).getDataBox( ),
+              fieldTmp->getSendExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
+              fieldTmp->getSendExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
+              direction,
+              mapper );
+/*
         __cudaKernel( kernelBashValue )
             ( grid, mapper.getSuperCellSize( ) )
             ( fieldTmp->getDeviceBuffer( ).getDataBox( ),
@@ -173,6 +209,7 @@ namespace picongpu
               fieldTmp->getSendExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
               direction,
               mapper );
+*/
     }
 
     void FieldTmp::insertField( uint32_t exchangeType )
@@ -182,12 +219,18 @@ namespace picongpu
         dim3 grid = mapper.getGridDim( );
 
         const DataSpace<simDim> direction = Mask::getRelativeDirections<simDim > ( mapper.getExchangeType( ) );
+	wrapper_kernelInsertValue(grid, mapper.getSuperCellSize( ), fieldTmp->getDeviceBuffer( ).getDataBox( ),
+              fieldTmp->getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
+              fieldTmp->getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
+              direction, mapper );
+/*
         __cudaKernel( kernelInsertValue )
             ( grid, mapper.getSuperCellSize( ) )
             ( fieldTmp->getDeviceBuffer( ).getDataBox( ),
               fieldTmp->getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
               fieldTmp->getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
               direction, mapper );
+*/
     }
 
     void FieldTmp::init( )

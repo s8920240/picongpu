@@ -27,7 +27,6 @@
 
 #include "nvidia/functors/Assign.hpp"
 #include "traits/GetValueType.hpp"
-#include <boost/type_traits.hpp>
 
 namespace PMacc
 {
@@ -94,6 +93,15 @@ namespace PMacc
                 }
             }
 
+                template<typename Type, typename Src, typename Dest, class Functor, class Functor2>
+                __host__ void wrapper_reduce(dim3 grid, dim3 block, size_t shared, 
+                                       Src src, const uint32_t src_count,
+                                       Dest dest,
+                                       Functor func, Functor2 func2)
+                {
+			 __cudaKernel((kernel::reduce < Type >))(grid, block, shared)(src, src_count, dest, func, func2);
+		}
+
             class Reduce
             {
             public:
@@ -122,14 +130,7 @@ namespace PMacc
                 template<class Functor, typename Src>
                 HINLINE typename traits::GetValueType<Src>::ValueType operator()(Functor func, Src src, uint32_t n)
                 {
-                   /* - the result of a functor can be a reference or a const value
-                    * - it is not allowed to create const or reference memory
-                    *   thus we remove `references` and `const` qualifiers */
-                   typedef typename boost::remove_const<
-                               typename boost::remove_reference<
-                                   typename traits::GetValueType<Src>::ValueType
-                               >::type
-                           >::type Type;
+                    typedef typename traits::GetValueType<Src>::ValueType Type;
 
                     uint32_t blockcount = optimalThreadsPerBlock(n, sizeof (Type));
 
@@ -144,8 +145,9 @@ namespace PMacc
 
                     uint32_t blocks = threads / 2 / blockcount;
                     if (blocks == 0) blocks = 1;
-                    __cudaKernel((kernel::reduce < Type >))(blocks, blockcount, blockcount * sizeof (Type))(src, n, dest, func,
-                                                                                                            PMacc::nvidia::functors::Assign());
+
+		wrapper_reduce<Type>(blocks, blockcount, blockcount * sizeof (Type), src, n, dest, func, PMacc::nvidia::functors::Assign());
+                   // __cudaKernel((kernel::reduce < Type >))(blocks, blockcount, blockcount * sizeof (Type))(src, n, dest, func, PMacc::nvidia::functors::Assign());
                     n = blocks;
                     blockcount = optimalThreadsPerBlock(n, sizeof (Type));
                     blocks = n / 2 / blockcount;
@@ -160,15 +162,16 @@ namespace PMacc
                             uint32_t useBlocks = blocks - blockOffset;
                             uint32_t problemSize = n - (blockOffset * blockcount);
                             Type* srcPtr = dest + (blockOffset * blockcount);
-                            
-                            __cudaKernel((kernel::reduce < Type >))(useBlocks, blockcount, blockcount * sizeof (Type))(srcPtr, problemSize, dest, func, func);
-                            blocks = blockOffset*blockcount;
+
+                wrapper_reduce<Type>(useBlocks, blockcount, blockcount * sizeof (Type), srcPtr, problemSize, dest, func, func);
+                         //__cudaKernel((kernel::reduce < Type >))(useBlocks, blockcount, blockcount * sizeof (Type))(srcPtr, problemSize, dest, func, func);
+                                   blocks = blockOffset*blockcount;
                         }
                         else
                         {
 
-                            __cudaKernel((kernel::reduce < Type >))(blocks, blockcount, blockcount * sizeof (Type))(dest, n, dest, func,
-                                                                                                                    PMacc::nvidia::functors::Assign());
+                wrapper_reduce<Type>(blocks, blockcount, blockcount * sizeof (Type), dest, n, dest, func, PMacc::nvidia::functors::Assign());
+                         // __cudaKernel((kernel::reduce < Type >))(blocks, blockcount, blockcount * sizeof (Type))(dest, n, dest, func, PMacc::nvidia::functors::Assign());
                         }
 
                         n = blocks;

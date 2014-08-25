@@ -36,6 +36,24 @@
 namespace PMacc
 {
 
+template<class FRAME, class Mapping>
+__host__ void wrapper_kernelShiftParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb, Mapping mapper)
+{
+            __cudaKernel(kernelShiftParticles) (grid, block)(pb,mapper);
+}
+
+template<class FRAME, class Mapping>
+__host__ void wrapper_kernelFillGapsLastFrame(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb, Mapping mapper)
+{
+            __cudaKernel(kernelFillGapsLastFrame) (grid, block) (pb, mapper);
+}
+
+template<class FRAME, class Mapping>
+__host__ void wrapper_kernelFillGaps(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb, Mapping mapper)
+{
+            __cudaKernel(kernelFillGaps) (grid, block) (pb, mapper);
+}
+
 template<typename T_ParticleDescription, class MappingDesc>
 class ParticlesBase : public SimulationFieldHelper<MappingDesc>
 {
@@ -83,6 +101,11 @@ protected:
         __startTransaction(__getTransactionEvent());
         do
         {
+
+	wrapper_kernelShiftParticles(mapper.getGridDim(), TileSize, pBox, mapper);
+	wrapper_kernelFillGaps(mapper.getGridDim(), TileSize, pBox, mapper);
+	wrapper_kernelFillGapsLastFrame(mapper.getGridDim(), TileSize, pBox, mapper);
+/*
             __cudaKernel(kernelShiftParticles)
                 (mapper.getGridDim(), TileSize)
                 (pBox, mapper);
@@ -92,6 +115,7 @@ protected:
             __cudaKernel(kernelFillGapsLastFrame)
                 (mapper.getGridDim(), TileSize)
                 (pBox, mapper);
+*/
         }
         while (mapper.next());
 
@@ -107,6 +131,9 @@ protected:
     {
         AreaMapping<AREA, MappingDesc> mapper(this->cellDescription);
 
+        wrapper_kernelFillGaps(mapper.getGridDim(), TileSize, particlesBuffer->getDeviceParticleBox(), mapper);
+        wrapper_kernelFillGapsLastFrame(mapper.getGridDim(), TileSize, particlesBuffer->getDeviceParticleBox(), mapper);
+/*
         __cudaKernel(kernelFillGaps)
             (mapper.getGridDim(), TileSize)
             (particlesBuffer->getDeviceParticleBox(), mapper);
@@ -114,6 +141,7 @@ protected:
         __cudaKernel(kernelFillGapsLastFrame)
             (mapper.getGridDim(), TileSize)
             (particlesBuffer->getDeviceParticleBox(), mapper);
+*/
     }
 
 

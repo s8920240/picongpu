@@ -114,6 +114,12 @@ __global__ void kernelIntensity(FieldBox field, DataSpace<simDim> cellsCount, Bo
 
 }
 
+template<class FieldBox, class BoxMax, class BoxIntegral>
+__host__ void wrapper_kernelIntensity(dim3 grid, dim3 block, FieldBox field, DataSpace<simDim> cellsCount, BoxMax boxMax, BoxIntegral integralBox)
+{
+        __cudaKernel(kernelIntensity)(grid, block)(field, cellsCount, boxMax, integralBox);
+}
+
 class IntensityPlugin : public ILightweightPlugin
 {
 private:
@@ -223,7 +229,7 @@ private:
     {
 
         const DataSpace<simDim> localSize(cellDescription->getGridLayout().getDataSpaceWithoutGuarding());
-        Window window(MovingWindow::getInstance().getWindow( currentStep));
+        VirtualWindow window(MovingWindow::getInstance().getVirtualWindow( currentStep));
 
         PMACC_AUTO(simBox,Environment<simDim>::get().SubGrid().getSimulationBox());
 
@@ -267,8 +273,7 @@ private:
                 }
             }
 
-            const uint32_t numSlides = MovingWindow::getInstance().getSlideCounter(currentStep);
-            size_t physicelYCellOffset = numSlides * yLocalSize + window.globalDimensions.offset.y();
+            size_t physicelYCellOffset = window.slides * yLocalSize + window.globalDimensions.offset.y();
             writeFile(currentStep,
                       maxAll + window.globalDimensions.offset.y(),
                       window.globalDimensions.size.y(),
@@ -339,6 +344,12 @@ private:
         typedef typename MappingDesc::SuperCellSize SuperCellSize;
         dim3 block(PMacc::math::CT::Vector<SuperCellSize::x,SuperCellSize::y>::toRT().toDim3());
 
+	wrapper_kernelIntensity(grid, block, fieldE->getDeviceDataBox(),
+             fieldE->getGridLayout().getDataSpace(),
+             localMaxIntensity->getDeviceBuffer().getDataBox(),
+             localIntegratedIntensity->getDeviceBuffer().getDataBox()
+             );
+/*
         __cudaKernel(kernelIntensity)
             (grid, block)
             (
@@ -347,7 +358,7 @@ private:
              localMaxIntensity->getDeviceBuffer().getDataBox(),
              localIntegratedIntensity->getDeviceBuffer().getDataBox()
              );
-
+*/
         localMaxIntensity->deviceToHost();
         localIntegratedIntensity->deviceToHost();
 

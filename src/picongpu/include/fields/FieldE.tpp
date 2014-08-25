@@ -134,9 +134,20 @@ GridLayout< simDim> FieldE::getGridLayout( )
     return cellDescription.getGridLayout( );
 }
 
+template<class EBox>
+__host__ void wrapper_kernelLaserE(dim3 gridBlocks, dim3 blockSize, EBox fieldE2, LaserManipulator lMan2)
+{
+
+    __cudaKernel( kernelLaserE )
+        ( gridBlocks,
+          blockSize )
+        ( fieldE2, lMan2 );
+
+}
+
 void FieldE::laserManipulation( uint32_t currentStep )
 {
-    const uint32_t numSlides = MovingWindow::getInstance().getSlideCounter(currentStep);
+    VirtualWindow win=MovingWindow::getInstance().getVirtualWindow(currentStep);
 
     /* Disable laser if
      * - init time of laser is over or
@@ -144,7 +155,7 @@ void FieldE::laserManipulation( uint32_t currentStep )
      * - we already performed a slide
      */
     if ( ( currentStep * DELTA_T ) >= laserProfile::INIT_TIME ||
-         Environment<simDim>::get().GridController().getCommunicationMask( ).isSet( TOP ) || numSlides != 0 ) return;
+         Environment<simDim>::get().GridController().getCommunicationMask( ).isSet( TOP ) || win.slides != 0 ) return;
 
     DataSpace<simDim-1> gridBlocks;
     DataSpace<simDim-1> blockSize;
@@ -154,10 +165,15 @@ void FieldE::laserManipulation( uint32_t currentStep )
     gridBlocks.y()=fieldE->getGridLayout( ).getDataSpaceWithoutGuarding( ).z( ) / SuperCellSize::z::value;
     blockSize.y()=SuperCellSize::z::value;
 #endif
+
+/*
     __cudaKernel( kernelLaserE )
         ( gridBlocks,
           blockSize )
         ( this->getDeviceDataBox( ), laser->getLaserManipulator( currentStep ) );
+*/
+wrapper_kernelLaserE(gridBlocks, blockSize, this->getDeviceDataBox( ), laser->getLaserManipulator( currentStep ));
+
 }
 
 void FieldE::reset( uint32_t )

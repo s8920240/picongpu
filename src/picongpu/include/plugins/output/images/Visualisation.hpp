@@ -464,6 +464,18 @@ __global__ void channelsToRGB(Mem mem, uint32_t n)
 
 }
 
+template<class Mem, typename Type>
+__host__ void wrapper_divideAnyCell(dim3 grid, dim3 block, Mem mem, uint32_t n, Type divisor)
+{
+__cudaKernel(vis_kernels::divideAnyCell)(grid, block)(mem, n, divisor);
+}
+
+template<class Mem>
+__host__ void wrapper_channelsToRGB(dim3 grid, dim3 block, Mem mem, uint32_t n)
+{
+__cudaKernel(vis_kernels::channelsToRGB)(grid, block)(mem, n);
+}
+
 /**
  * Visualizes simulation data by writing png files.
  * Visulization is performed in an additional thread.
@@ -516,7 +528,7 @@ public:
     {
         assert(cellDescription != NULL);
         const DataSpace<simDim> localSize(cellDescription->getGridLayout().getDataSpaceWithoutGuarding());
-        Window window(MovingWindow::getInstance().getWindow(currentStep));
+        VirtualWindow window(MovingWindow::getInstance().getVirtualWindow(currentStep));
 
         /*sliceOffset is only used in 3D*/
         sliceOffset = (int) ((float) (window.globalDimensions.size[sliceDim]) * slicePoint) + window.globalDimensions.offset[sliceDim];
@@ -534,7 +546,7 @@ public:
         this->cellDescription = cellDescription;
     }
 
-    void createImage(uint32_t currentStep, Window window)
+    void createImage(uint32_t currentStep, VirtualWindow window)
     {
         DataConnector &dc = Environment<>::get().DataConnector();
         // Data does not need to be synchronized as visualization is
@@ -592,11 +604,14 @@ public:
         //We don't know the superCellSize at compile time
         // (because of the runtime dimension selection in any analyser),
         // thus we must use a one dimension kernel and no mapper
-        __cudaKernel(vis_kernels::divideAnyCell)(ceil((double) elements / 256), 256)(d1access, elements, max);
+
+	wrapper_divideAnyCell(ceil((double) elements / 256), 256, d1access, elements, max);
+      //  __cudaKernel(vis_kernels::divideAnyCell)(ceil((double) elements / 256), 256)(d1access, elements, max);
 #endif
 
         // convert channels to RGB
-        __cudaKernel(vis_kernels::channelsToRGB)(ceil((double) elements / 256), 256)(d1access, elements);
+        wrapper_channelsToRGB(ceil((double) elements / 256), 256, d1access, elements);
+      //  __cudaKernel(vis_kernels::channelsToRGB)(ceil((double) elements / 256), 256)(d1access, elements);
 
         // add density color channel
         DataSpace<simDim> blockSize(MappingDesc::SuperCellSize::toRT());
@@ -647,7 +662,7 @@ public:
             assert(cellDescription != NULL);
             const DataSpace<simDim> localSize(cellDescription->getGridLayout().getDataSpaceWithoutGuarding());
 
-            Window window(MovingWindow::getInstance().getWindow(0));
+            VirtualWindow window(MovingWindow::getInstance().getVirtualWindow(0));
             sliceOffset = (int) ((float) (window.globalDimensions.size[sliceDim]) * slicePoint) + window.globalDimensions.offset[sliceDim];
 
 

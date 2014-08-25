@@ -40,10 +40,19 @@ class FieldManipulator
 {
 public:
 
+
+template<class BoxedMemory, class Mapping>
+static __host__ void wrapper_kernelAbsorbBorder(dim3 grid, dim3 block, BoxedMemory field, uint32_t thickness, float_X absorber_strength, Mapping mapper)
+{
+                __cudaKernel(kernelAbsorbBorder)
+                    (grid, block)
+                    (field, thickness, absorber_strength,
+                     mapper);
+}
     template<class BoxedMemory>
     static void absorbBorder(uint32_t currentStep, MappingDesc &cellDescription, BoxedMemory deviceBox)
     {
-        const uint32_t numSlides = MovingWindow::getInstance().getSlideCounter(currentStep);
+        VirtualWindow win = MovingWindow::getInstance().getVirtualWindow(currentStep);
         for (uint32_t i = 1; i < NumberOfExchanges<simDim>::value; ++i)
         {
             /* only call for plains: left right top bottom back front*/
@@ -70,7 +79,7 @@ public:
                  *      no slide was performed and
                  *      laser init time is not over
                  */
-                if (numSlides == 0 && ((currentStep * DELTA_T) <= laserProfile::INIT_TIME))
+                if (win.slides == 0 && ((currentStep * DELTA_T) <= laserProfile::INIT_TIME))
                 {
                     if (i == TOP) continue; /*disable laser on top side*/
                 }
@@ -79,10 +88,13 @@ public:
                 if (MovingWindow::getInstance().isSlidingWindowActive() && i == BOTTOM) continue;
 
                 ExchangeMapping<GUARD, MappingDesc> mapper(cellDescription, i);
+		wrapper_kernelAbsorbBorder(mapper.getGridDim(), mapper.getSuperCellSize(), deviceBox, thickness, absorber_strength,mapper);
+/*
                 __cudaKernel(kernelAbsorbBorder)
                     (mapper.getGridDim(), mapper.getSuperCellSize())
                     (deviceBox, thickness, absorber_strength,
                      mapper);
+*/
             }
         }
     }

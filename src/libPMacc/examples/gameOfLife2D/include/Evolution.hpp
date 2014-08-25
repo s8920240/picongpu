@@ -123,6 +123,22 @@ namespace gol
             mapping = desc;
         }
 
+        template<class BoxWriteOnly, class Mapping>
+        __host__ void wrapper_randomInit(dim3 grid, dim3 block, BoxWriteOnly buffWrite,
+                                   uint32_t seed,
+                                   float fraction,
+                                   Mapping mapper)
+        {
+            __cudaKernel(kernel::randomInit)
+                    (grid, block)
+                    (
+                     buffWrite,
+                     seed,
+                     fraction,
+                     mapper);
+
+	}
+
         template<class DBox>
         void initEvolution(const DBox & writeBox, float fraction)
         {
@@ -130,6 +146,8 @@ namespace gol
             GridController<DIM2>& gc = Environment<DIM2>::get().GridController();
             uint32_t seed = gc.getGlobalSize() + gc.getGlobalRank();
 
+	wrapper_randomInit(mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3(), writeBox,seed, fraction,mapper);
+/*
             __cudaKernel(kernel::randomInit)
                     (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
                     (
@@ -137,18 +155,34 @@ namespace gol
                      seed,
                      fraction,
                      mapper);
+*/
         }
+
+        template<class BoxReadOnly, class BoxWriteOnly, class Mapping>
+        __host__ void wrapper_evolution(dim3 grid, dim3 block, BoxReadOnly buffRead,
+                                  BoxWriteOnly buffWrite,
+                                  uint32_t rule,
+                                  Mapping mapper)
+        {
+	            __cudaKernel(kernel::evolution)
+                    (grid, block)
+                    (buffRead, buffWrite, rule, mapper);
+	}
 
         template<uint32_t Area, class DBox>
         void run(const DBox& readBox, const DBox & writeBox)
         {
             AreaMapping < Area, MappingDesc > mapper(mapping);
+
+	wrapper_evolution(mapper.getGridDim(),  MappingDesc::SuperCellSize::toRT().toDim3(), readBox, writeBox, rule, mapper);
+/*
             __cudaKernel(kernel::evolution)
                     (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
                     (readBox,
                      writeBox,
                      rule,
                      mapper);
+*/
         }
     };
 }

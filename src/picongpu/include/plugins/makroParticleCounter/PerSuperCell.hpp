@@ -96,6 +96,12 @@ __global__ void CountMakroParticle(ParBox parBox, CounterBox counterBox, Mapping
         counterBox(counterCell) = counterValue;
 }
 
+template<class ParBox, class CounterBox, class Mapping>
+__host__ void wrapper_CountMakroParticle(dim3 grid, dim3 block, ParBox parBox, CounterBox counterBox, Mapping mapper)
+{
+        __cudaKernel(CountMakroParticle)(grid, block)(parBox, counterBox, mapper);
+}
+
 /** Count makro particle of a species and write down the result to a global HDF5 file.
  *
  * - count the total number of makro particle per supercell
@@ -213,13 +219,16 @@ private:
         typedef MappingDesc::SuperCellSize SuperCellSize;
         AreaMapping<AREA, MappingDesc> mapper(*cellDescription);
 
+	wrapper_CountMakroParticle(mapper.getGridDim(), SuperCellSize::toRT().toDim3(), particles->getDeviceParticlesBox(),
+             localResult->getDeviceBuffer().getDataBox(), mapper);
+/*
         __cudaKernel(CountMakroParticle)
             (mapper.getGridDim(), SuperCellSize::toRT().toDim3())
             (particles->getDeviceParticlesBox(),
              localResult->getDeviceBuffer().getDataBox(), mapper);
 
         localResult->deviceToHost();
-
+*/
 
 
         /*############ dump data #############################################*/

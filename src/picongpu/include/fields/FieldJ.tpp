@@ -120,6 +120,18 @@ EventTask FieldJ::asyncCommunication( EventTask serialEvent )
     return ret;
 }
 
+template<class Mapping>
+__host__ void wrapper_kernelBashCurrent(dim3 grid, dim3 block, J_DataBox fieldJ,
+                                  J_DataBox targetJ,
+                                  DataSpace<simDim> exchangeSize,
+                                  DataSpace<simDim> direction,
+                                  Mapping mapper)
+{
+	__cudaKernel( kernelBashCurrent )
+        ( grid, block )
+        ( fieldJ, targetJ,exchangeSize, direction,  mapper );
+}
+
 void FieldJ::bashField( uint32_t exchangeType )
 {
     ExchangeMapping<GUARD, MappingDesc> mapper( this->cellDescription, exchangeType );
@@ -127,13 +139,29 @@ void FieldJ::bashField( uint32_t exchangeType )
     dim3 grid = mapper.getGridDim( );
 
     const DataSpace<simDim> direction = Mask::getRelativeDirections<simDim > ( mapper.getExchangeType( ) );
-    __cudaKernel( kernelBashCurrent )
+    wrapper_kernelBashCurrent(grid, mapper.getSuperCellSize( ), fieldJ.getDeviceBuffer( ).getDataBox( ),
+          fieldJ.getSendExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
+          fieldJ.getSendExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
+          direction,
+          mapper);
+/*    __cudaKernel( kernelBashCurrent )
         ( grid, mapper.getSuperCellSize( ) )
         ( fieldJ.getDeviceBuffer( ).getDataBox( ),
           fieldJ.getSendExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
           fieldJ.getSendExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
           direction,
           mapper );
+*/
+}
+
+template<class Mapping>
+__host__ void wrapper_kernelInsertCurrent(dim3 grid, dim3 block, J_DataBox fieldJ,
+                                    J_DataBox sourceJ,
+                                    DataSpace<simDim> exchangeSize,
+                                    DataSpace<simDim> direction,
+                                    Mapping mapper)
+{
+    __cudaKernel( kernelInsertCurrent ) (grid, block) ( fieldJ, sourceJ, exchangeSize, direction, mapper );
 }
 
 void FieldJ::insertField( uint32_t exchangeType )
@@ -143,12 +171,18 @@ void FieldJ::insertField( uint32_t exchangeType )
     dim3 grid = mapper.getGridDim( );
 
     const DataSpace<simDim> direction = Mask::getRelativeDirections<simDim > ( mapper.getExchangeType( ) );
+    wrapper_kernelInsertCurrent(grid, mapper.getSuperCellSize( ), fieldJ.getDeviceBuffer( ).getDataBox( ),
+          fieldJ.getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
+          fieldJ.getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
+          direction, mapper );
+/*
     __cudaKernel( kernelInsertCurrent )
         ( grid, mapper.getSuperCellSize( ) )
         ( fieldJ.getDeviceBuffer( ).getDataBox( ),
           fieldJ.getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataBox( ),
           fieldJ.getReceiveExchange( exchangeType ).getDeviceBuffer( ).getDataSpace( ),
           direction, mapper );
+*/
 }
 
 void FieldJ::init( FieldE &fieldE )
@@ -193,6 +227,17 @@ FieldJ::getCommTag( )
     return FIELD_J;
 }
 
+template<int workerMultiplier, class BlockDescription_, uint32_t AREA, class JBox, class ParBox, class Mapping, class FrameSolver>
+__host__ void wrapper_kernelComputeCurrent(dim3 grid, dim3 block, JBox fieldJ,
+                                     ParBox boxPar, FrameSolver frameSolver, Mapping mapper)
+{
+__cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockDescription_, AREA> ) )
+            ( grid, block)
+            ( fieldJ,
+              boxPar, frameSolver, mapper );
+
+}
+
 template<uint32_t AREA, class ParticlesClass>
 void FieldJ::computeCurrent( ParticlesClass &parClass, uint32_t ) throw (std::invalid_argument )
 {
@@ -221,24 +266,41 @@ void FieldJ::computeCurrent( ParticlesClass &parClass, uint32_t ) throw (std::in
     __startAtomicTransaction( __getTransactionEvent( ) );
     do
     {
-        __cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockArea, AREA> ) )
+	wrapper_kernelComputeCurrent<workerMultiplier,BlockArea, AREA>( mapper.getGridDim( ), blockSize, jBox, pBox, solver, mapper);
+/*
+__cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockArea, AREA> ) )
             ( mapper.getGridDim( ), blockSize )
             ( jBox,
               pBox, solver, mapper );
+*/
     }
     while ( mapper.next( ) );
     __setTransactionEvent( __endTransaction( ) );
 }
 
 template<uint32_t AREA>
+__host__ void wrapper_kernelAddCurrentToE(dim3 grid, typename FieldE::DataBoxType fieldE,
+                                    J_DataBox fieldJ, MappingDesc cellDescription)
+{
+    __picKernelArea( ( kernelAddCurrentToE ),
+                     cellDescription,
+                     AREA )
+        ( grid )(fieldE, fieldJ);
+}
+
+template<uint32_t AREA>
 void FieldJ::addCurrentToE( )
 {
+    wrapper_kernelAddCurrentToE<AREA>(MappingDesc::SuperCellSize::toRT( ).toDim3(),  this->fieldE->getDeviceDataBox( ),
+          this->fieldJ.getDeviceBuffer( ).getDataBox( ), cellDescription );
+/*
     __picKernelArea( ( kernelAddCurrentToE ),
                      cellDescription,
                      AREA )
         ( MappingDesc::SuperCellSize::toRT( ).toDim3() )
         ( this->fieldE->getDeviceDataBox( ),
           this->fieldJ.getDeviceBuffer( ).getDataBox( ) );
+*/
 }
 
 }

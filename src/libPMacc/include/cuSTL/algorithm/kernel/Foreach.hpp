@@ -45,7 +45,23 @@ namespace algorithm
 {
 namespace kernel
 {
-    
+
+/*
+#ifndef FOREACH_KERNEL_MAX_PARAMS
+#define FOREACH_KERNEL_MAX_PARAMS 4
+#endif
+#define SHIFT_CURSOR_ZONE(Z, N, _) C ## N c ## N ## _shifted = c ## N (_zone.offset);
+#define SHIFTACCESS_CURSOR(Z, N, _) forward(c ## N [cellIndex])
+
+#define KERNEL_FOREACH(Z, N, _) \
+
+template<typename Mapper, BOOST_PP_ENUM_PARAMS(N, typename C), typename Functor> 
+__host__ void wrapper_kernelForeach(dim3 grid, dim3 block, Mapper mapper, Functor functor) 
+{ 
+__cudaKernel(detail::kernelForeach)(grid, block)(mapper, BOOST_PP_ENUM(N, SHIFTED_CURSOR, _), functor);
+}
+*/
+ 
 #ifndef FOREACH_KERNEL_MAX_PARAMS
 #define FOREACH_KERNEL_MAX_PARAMS 4
 #endif
@@ -66,6 +82,7 @@ namespace kernel
         dim3 blockDim(BlockDim::x::value, BlockDim::y::value, BlockDim::z::value);                          \
         detail::SphericMapper<Zone::dim, BlockDim> mapper; \
         using namespace PMacc;                                                                              \
+	/*wrapper_kernelForeach(mapper.cudaGridDim(_zone.size), blockDim, mapper, lambda::make_Functor(functor)); */ \
         __cudaKernel(detail::kernelForeach)(mapper.cudaGridDim(_zone.size), blockDim)                       \
                   /* c0_shifted, c1_shifted, ... */                                                         \
             (mapper, BOOST_PP_ENUM(N, SHIFTED_CURSOR, _), lambda::make_Functor(functor));                   \

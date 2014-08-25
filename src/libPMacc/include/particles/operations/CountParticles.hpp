@@ -91,6 +91,14 @@ __global__ void kernelCountParticles(PBox pb,
     }
 }
 
+template<class PBox, class Filter, class Mapping>
+__host__ void wrapper_kernelCountParticles(dim3 grid, dim3 block, PBox pb, uint64_cu* gCounter,
+                                     Filter filter,
+                                     Mapping mapper)
+{
+	  __cudaKernel(kernelCountParticles) (grid, block) (pb, gCounter, filter, mapper);
+}
+
 struct CountParticles
 {
 
@@ -112,13 +120,18 @@ struct CountParticles
 
         AreaMapping<AREA, CellDesc> mapper(cellDescription);
 
+	wrapper_kernelCountParticles(mapper.getGridDim(), block, buffer.getDeviceParticlesBox(),
+             counter.getDeviceBuffer().getBasePointer(),
+             filter,
+             mapper);
+/*
         __cudaKernel(kernelCountParticles)
             (mapper.getGridDim(), block)
             (buffer.getDeviceParticlesBox(),
              counter.getDeviceBuffer().getBasePointer(),
              filter,
              mapper);
-
+*/
         counter.deviceToHost();
         return *(counter.getHostBuffer().getDataBox());
     }
