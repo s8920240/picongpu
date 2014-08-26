@@ -467,13 +467,13 @@ __global__ void channelsToRGB(Mem mem, uint32_t n)
 template<class Mem, typename Type>
 __host__ void wrapper_divideAnyCell(dim3 grid, dim3 block, Mem mem, uint32_t n, Type divisor)
 {
-__cudaKernel(vis_kernels::divideAnyCell)(grid, block)(mem, n, divisor);
+__cudaKernel(vis_kernels::divideAnyCell<Mem>)(grid, block)(mem, n, divisor);
 }
 
 template<class Mem>
 __host__ void wrapper_channelsToRGB(dim3 grid, dim3 block, Mem mem, uint32_t n)
 {
-__cudaKernel(vis_kernels::channelsToRGB)(grid, block)(mem, n);
+__cudaKernel(vis_kernels::channelsToRGB<Mem>)(grid, block)(mem, n);
 }
 
 /**

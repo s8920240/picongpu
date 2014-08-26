@@ -96,7 +96,7 @@ __host__ void wrapper_kernelCountParticles(dim3 grid, dim3 block, PBox pb, uint6
                                      Filter filter,
                                      Mapping mapper)
 {
-	  __cudaKernel(kernelCountParticles) (grid, block) (pb, gCounter, filter, mapper);
+	  __cudaKernel(kernelCountParticles<PBox>) (grid, block) (pb, gCounter, filter, mapper);
 }
 
 struct CountParticles

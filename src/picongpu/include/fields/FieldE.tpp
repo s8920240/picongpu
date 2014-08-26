@@ -138,7 +138,7 @@ template<class EBox>
 __host__ void wrapper_kernelLaserE(dim3 gridBlocks, dim3 blockSize, EBox fieldE2, LaserManipulator lMan2)
 {
 
-    __cudaKernel( kernelLaserE )
+    __cudaKernel( kernelLaserE<EBox> )
         ( gridBlocks,
           blockSize )
         ( fieldE2, lMan2 );

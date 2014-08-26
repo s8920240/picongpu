@@ -129,7 +129,7 @@ namespace gol
                                    float fraction,
                                    Mapping mapper)
         {
-            __cudaKernel(kernel::randomInit)
+            __cudaKernel(kernel::randomInit<BoxWriteOnly,Mapping>)
                     (grid, block)
                     (
                      buffWrite,
@@ -164,7 +164,7 @@ namespace gol
                                   uint32_t rule,
                                   Mapping mapper)
         {
-	            __cudaKernel(kernel::evolution)
+	            __cudaKernel(kernel::evolution<BoxReadOnly,BoxWriteOnly,Mapping>)
                     (grid, block)
                     (buffRead, buffWrite, rule, mapper);
 	}

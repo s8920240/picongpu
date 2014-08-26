@@ -39,13 +39,13 @@ namespace PMacc
 template<class FRAME, class Mapping>
 __host__ void wrapper_kernelShiftParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb, Mapping mapper)
 {
-            __cudaKernel(kernelShiftParticles) (grid, block)(pb,mapper);
+            __cudaKernel(kernelShiftParticles<FRAME>) (grid, block)(pb,mapper);
 }
 
 template<class FRAME, class Mapping>
 __host__ void wrapper_kernelFillGapsLastFrame(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb, Mapping mapper)
 {
-            __cudaKernel(kernelFillGapsLastFrame) (grid, block) (pb, mapper);
+            __cudaKernel(kernelFillGapsLastFrame<FRAME>) (grid, block) (pb, mapper);
 }
 
 template<class FRAME, class Mapping>

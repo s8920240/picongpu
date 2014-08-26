@@ -55,7 +55,7 @@ using namespace PMacc;
 template<class T_DestFrame, class T_SrcBox, class T_Filter, class T_Space ,class T_Mapping>
 __host__ void wrapper_copySpecies(dim3 grid, dim3 block, int* counter, T_DestFrame destFrame, T_SrcBox srcBox, T_Filter filter,T_Space gpuOffset, T_Mapping mapper)
 {
-            __cudaKernel(copySpecies) (grid, block)(counter, destFrame, srcBox, filter, gpuOffset, mapper);
+            __cudaKernel(copySpecies<T_DestFrame,T_SrcBox,T_Filter,T_Space,T_Mapping>) (grid, block)(counter, destFrame, srcBox, filter, gpuOffset, mapper);
 }
 
 /** Write copy particle to host memory and dump to ADIOS file

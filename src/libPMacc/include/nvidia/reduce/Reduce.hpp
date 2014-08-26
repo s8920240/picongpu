@@ -100,7 +100,7 @@ namespace PMacc
                                        Dest dest,
                                        Functor func, Functor2 func2)
                 {
-			 __cudaKernel((kernel::reduce < Type >))(grid, block, shared)(src, src_count, dest, func, func2);
+			 __cudaKernel((kernel::reduce < Type,Src, Dest,Functor,Functor2 >))(grid, block, shared)(src, src_count, dest, func, func2);
 		}
 
             class Reduce

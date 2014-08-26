@@ -99,7 +99,7 @@ __global__ void CountMakroParticle(ParBox parBox, CounterBox counterBox, Mapping
 template<class ParBox, class CounterBox, class Mapping>
 __host__ void wrapper_CountMakroParticle(dim3 grid, dim3 block, ParBox parBox, CounterBox counterBox, Mapping mapper)
 {
-        __cudaKernel(CountMakroParticle)(grid, block)(parBox, counterBox, mapper);
+        __cudaKernel(CountMakroParticle<ParBox, CounterBox, Mapping>)(grid, block)(parBox, counterBox, mapper);
 }
 
 /** Count makro particle of a species and write down the result to a global HDF5 file.

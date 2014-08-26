@@ -114,7 +114,7 @@ namespace picongpu
                                      DataSpace<simDim> direction,
                                      Mapping mapper )
     {
-        __cudaKernel( kernelBashValue ) (grid, block)  (fieldTmp, targetJ, exchangeSize, direction, mapper );
+        __cudaKernel( kernelBashValue<Box> ) (grid, block)  (fieldTmp, targetJ, exchangeSize, direction, mapper );
     }
 
     template<class Box, class Mapping>
@@ -124,7 +124,7 @@ namespace picongpu
                                        DataSpace<simDim> direction,
                                        Mapping mapper )
     {
-        __cudaKernel( kernelInsertValue ) (grid, block) ( fieldTmp, sourceTmp, exchangeSize,direction, mapper );
+        __cudaKernel( kernelInsertValue<Box> ) (grid, block) ( fieldTmp, sourceTmp, exchangeSize,direction, mapper );
     }
 
     template<class BlockDescription_, uint32_t AREA, class TmpBox, class ParBox, class FrameSolver, class Mapping>

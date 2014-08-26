@@ -117,7 +117,7 @@ __global__ void kernelIntensity(FieldBox field, DataSpace<simDim> cellsCount, Bo
 template<class FieldBox, class BoxMax, class BoxIntegral>
 __host__ void wrapper_kernelIntensity(dim3 grid, dim3 block, FieldBox field, DataSpace<simDim> cellsCount, BoxMax boxMax, BoxIntegral integralBox)
 {
-        __cudaKernel(kernelIntensity)(grid, block)(field, cellsCount, boxMax, integralBox);
+        __cudaKernel(kernelIntensity<FieldBox>)(grid, block)(field, cellsCount, boxMax, integralBox);
 }
 
 class IntensityPlugin : public ILightweightPlugin

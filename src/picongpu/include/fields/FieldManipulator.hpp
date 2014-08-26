@@ -44,7 +44,7 @@ public:
 template<class BoxedMemory, class Mapping>
 static __host__ void wrapper_kernelAbsorbBorder(dim3 grid, dim3 block, BoxedMemory field, uint32_t thickness, float_X absorber_strength, Mapping mapper)
 {
-                __cudaKernel(kernelAbsorbBorder)
+                __cudaKernel(kernelAbsorbBorder<BoxedMemory>)
                     (grid, block)
                     (field, thickness, absorber_strength,
                      mapper);

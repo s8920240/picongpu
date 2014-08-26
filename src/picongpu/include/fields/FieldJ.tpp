@@ -127,7 +127,7 @@ __host__ void wrapper_kernelBashCurrent(dim3 grid, dim3 block, J_DataBox fieldJ,
                                   DataSpace<simDim> direction,
                                   Mapping mapper)
 {
-	__cudaKernel( kernelBashCurrent )
+	__cudaKernel( kernelBashCurrent<Mapping> )
         ( grid, block )
         ( fieldJ, targetJ,exchangeSize, direction,  mapper );
 }
@@ -161,7 +161,7 @@ __host__ void wrapper_kernelInsertCurrent(dim3 grid, dim3 block, J_DataBox field
                                     DataSpace<simDim> direction,
                                     Mapping mapper)
 {
-    __cudaKernel( kernelInsertCurrent ) (grid, block) ( fieldJ, sourceJ, exchangeSize, direction, mapper );
+    __cudaKernel( kernelInsertCurrent<Mapping> ) (grid, block) ( fieldJ, sourceJ, exchangeSize, direction, mapper );
 }
 
 void FieldJ::insertField( uint32_t exchangeType )
@@ -231,7 +231,7 @@ template<int workerMultiplier, class BlockDescription_, uint32_t AREA, class JBo
 __host__ void wrapper_kernelComputeCurrent(dim3 grid, dim3 block, JBox fieldJ,
                                      ParBox boxPar, FrameSolver frameSolver, Mapping mapper)
 {
-__cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockDescription_, AREA> ) )
+__cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockDescription_, AREA, JBox, ParBox, Mapping, FrameSolver> ) )
             ( grid, block)
             ( fieldJ,
               boxPar, frameSolver, mapper );
