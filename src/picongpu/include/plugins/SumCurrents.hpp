@@ -83,6 +83,13 @@ __global__ void kernelSumCurrents(J_DataBox fieldJ, float3_X* gCurrent, Mapping 
     }
 }
 
+template<class Mapping>
+__host__ void wrapper_kernelSumCurrents(dim3 grid, dim3 block, J_DataBox fieldJ, float3_X* gCurrent, Mapping mapper)
+{
+        __cudaKernel((kernelSumCurrents))(grid, block)(fieldJ,gCurrent,mapper);
+}
+
+
 class SumCurrents : public ILightweightPlugin
 {
 private:
@@ -188,6 +195,10 @@ private:
     {
         sumcurrents->getDeviceBuffer().setValue(float3_X(float_X(0.0), float_X(0.0), float_X(0.0)));
         dim3 block(MappingDesc::SuperCellSize::toRT().toDim3());
+
+	AreaMapping<CORE+BORDER,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelSumCurrents(mapper.getGridDim(),block, fieldJ->getDeviceDataBox(),
+             sumcurrents->getDeviceBuffer().getBasePointer(), mapper);
 /*
         __picKernelArea(kernelSumCurrents, *cellDescription, CORE + BORDER)
             (block)

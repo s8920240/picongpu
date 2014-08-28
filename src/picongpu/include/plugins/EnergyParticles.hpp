@@ -282,6 +282,13 @@ private:
         }
     }
 
+template<class FRAME, class DBox, class Mapping>
+__host__ void wrapper_kernelEnergyParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, simDim> pb,
+                                      DBox gEnergy,
+                                      Mapping mapper)
+{
+__cudaKernel((kernelEnergyParticles<FRAME>))(mapper.getGridDim(),block)(pb, gEnergy,mapper);
+}
     /** method to call analysis and plugin-kernel calls **/
     template< uint32_t AREA>
     void calculateEnergyParticles(uint32_t currentStep)
@@ -290,12 +297,13 @@ private:
         dim3 block(MappingDesc::SuperCellSize::toRT().toDim3()); /* GPU parallelization */
 
         /* kernel call = sum all particle energies on GPU */
-/*
+	AreaMapping<AREA,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelEnergyParticles(mapper.getGridDim(), block, particles->getDeviceParticlesBox(),gEnergy->getDeviceBuffer().getDataBox(), mapper);
         __picKernelArea(kernelEnergyParticles, *cellDescription, AREA)
             (block)
             (particles->getDeviceParticlesBox(),
              gEnergy->getDeviceBuffer().getDataBox());
-*/
+
         gEnergy->deviceToHost(); /* get energy from GPU */
 
         double reducedEnergy[2]; /* create storage for kinetic and total energy */

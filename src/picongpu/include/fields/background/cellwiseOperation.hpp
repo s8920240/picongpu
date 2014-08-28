@@ -66,12 +66,15 @@ namespace cellwiseOperation
                  );
     }
 
-    template<class T_OpFunctor,class T_ValFunctor,class FieldBox,class Mapping,uint32_t T_Area>
-    __host__ void wrapper_kernelCellwiseOperation(dim3 grid, FieldBox field, T_OpFunctor opFunctor, T_ValFunctor valFunctor, const DataSpace<simDim> totalCellOffset,const uint32_t currentStep, Mapping mapper, MappingDesc cellDescription )
+    template<class T_OpFunctor,class T_ValFunctor,class FieldBox, class Mapping>
+    __host__ void wrapper_kernelCellwiseOperation(dim3 grid, dim3 block, FieldBox field, T_OpFunctor opFunctor, T_ValFunctor valFunctor, const DataSpace<simDim> totalCellOffset,const uint32_t currentStep, Mapping mapper)
     {
+            __cudaKernel((kernelCellwiseOperation<T_OpFunctor>))(grid, block)(field, opFunctor, valFunctor, totalCellOffset, currentStep,mapper);
+/*
             __picKernelArea((kernelCellwiseOperation<T_OpFunctor>), cellDescription, T_Area)
                     (grid)
                     (field, opFunctor, valFunctor, totalCellOffset, currentStep);
+*/
     }
 
     /** Call a functor on each cell of a field
@@ -120,7 +123,11 @@ namespace cellwiseOperation
                 totalCellOffset += cellDescription.getSuperCellSize() * cellDescription.getBorderSuperCells();
 
             /* start kernel */
-	 //   wrapper_kernelCellwiseOperation(SuperCellSize::toRT().toDim3(),field->getDeviceDataBox(), opFunctor, valFunctor, totalCellOffset, currentStep, T_Area, cellDescription);
+	    AreaMapping<T_Area,MappingDesc> mapper(cellDescription);
+//	    __cudaKernel((kernelCellwiseOperation<T_OpFunctor>))(mapper.getGridDim(),SuperCellSize::toRT().toDim3())(field->getDeviceDataBox(), opFunctor, valFunctor, totalCellOffset, currentStep,mapper);
+
+	    wrapper_kernelCellwiseOperation<T_OpFunctor>(mapper.getGridDim(),SuperCellSize::toRT().toDim3(),field->getDeviceDataBox(), opFunctor, valFunctor, totalCellOffset, currentStep, mapper);
+
 /*
             __picKernelArea((kernelCellwiseOperation<T_OpFunctor>), cellDescription, T_Area)
                     (SuperCellSize::toRT().toDim3())

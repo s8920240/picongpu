@@ -167,6 +167,19 @@ kernelParticleDensity(ParBox pb,
     }
 }
 
+template<class ParBox, class Mapping, typename Type_>
+__host__ void
+wrapper_kernelParticleDensity(dim3 grid, dim3 block, size_t shared, ParBox pb,
+                      DataBox<PitchedBox<Type_, DIM2> > image,
+                      DataSpace<DIM2> transpose,
+                      int slice,
+                      uint32_t globalOffset,
+                      uint32_t sliceDim,
+                      Mapping mapper)
+{
+	__cudaKernel((kernelParticleDensity<ParBox>))(grid, block, shared)(pb, image,transpose,slice,globalOffset,sliceDim,mapper);
+}
+
 /**
  * Visualizes simulation data by writing png files.
  * Visulization is performed in an additional thread.
@@ -257,6 +270,14 @@ public:
 
 
         //create density image of particles
+	AreaMapping<CORE+BORDER,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelParticleDensity(mapper.getGridDim(), SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (float_X),
+		particles->getDeviceParticlesBox(),
+             img->getDeviceBuffer().getDataBox(),
+             transpose,
+             sliceOffset,
+             globalOffset, sliceDim, mapper);
+
 /*
         __picKernelArea((kernelParticleDensity), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (float_X))

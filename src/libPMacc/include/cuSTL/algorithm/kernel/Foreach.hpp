@@ -83,9 +83,9 @@ __cudaKernel(detail::kernelForeach)(grid, block)(mapper, BOOST_PP_ENUM(N, SHIFTE
         detail::SphericMapper<Zone::dim, BlockDim> mapper; \
         using namespace PMacc;                                                                              \
 	/*wrapper_kernelForeach(mapper.cudaGridDim(_zone.size), blockDim, mapper, lambda::make_Functor(functor)); */ \
-        __cudaKernel(detail::kernelForeach)(mapper.cudaGridDim(_zone.size), blockDim)                       \
+        /*__cudaKernel(detail::kernelForeach)(mapper.cudaGridDim(_zone.size), blockDim)                     */  \
                   /* c0_shifted, c1_shifted, ... */                                                         \
-            (mapper, BOOST_PP_ENUM(N, SHIFTED_CURSOR, _), lambda::make_Functor(functor));                   \
+/*            (mapper, BOOST_PP_ENUM(N, SHIFTED_CURSOR, _), lambda::make_Functor(functor));                */   \
     }
     
 /** Foreach algorithm that calls a cuda kernel

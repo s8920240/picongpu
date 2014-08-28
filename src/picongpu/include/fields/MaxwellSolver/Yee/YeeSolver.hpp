@@ -53,31 +53,33 @@ namespace yeeSolver
 using namespace PMacc;
 
 
-/*
 template<class BlockDescription_, class CurlType_, class EBox, class BBox, class Mapping>
-__global__ void kernelUpdateE(EBox fieldE, BBox fieldB, Mapping mapper)
+__host__ void wrapper_kernelUpdateE(dim3 grid, dim3 block, EBox fieldE, BBox fieldB, Mapping mapper)
 {
-*/
-/*
-template<class BlockDescription_, class CurlType_, class EBox, class BBox, class Mapping, uint32_t AREA, MappingDesc cellDescription>
-__host__ void wrapper_kernelUpdateE(dim3 grid, EBox fieldE, BBox fieldB)
-{
-        __picKernelArea((kernelUpdateE<BlockDescription_, CurlType_>), cellDescription, AREA)
-                (grid)(fieldE, fieldB);
+//        __picKernelArea((kernelUpdateE<BlockDescription_, CurlType_>), cellDescription, AREA)
+//                (grid)(fieldE, fieldB);
+
+        __cudaKernel((kernelUpdateE<BlockDescription_, CurlType_>))(grid, block)
+                        (fieldE, fieldB,mapper);
+
 }
-*/
-/*
+
+
 template<class BlockDescription_, class CurlType_, class EBox, class BBox, class Mapping>
-__host__ void wrapper_kernelUpdateBHalf(BBox fieldB,
+__host__ void wrapper_kernelUpdateBHalf(dim3 grid, dim3 block, BBox fieldB,
                                   EBox fieldE,
                                   Mapping mapper)
 {
+        __cudaKernel((kernelUpdateBHalf<BlockDescription_, CurlType_>))(grid, block)
+                        (fieldB, fieldE,mapper);
+/*
         __picKernelArea((kernelUpdateBHalf<BlockArea, CurlE>), cellDescription, AREA)
                 (SuperCellSize::toRT().toDim3())
                 (this->fieldB->getDeviceDataBox(),
                 this->fieldE->getDeviceDataBox());
-}
 */
+}
+
 
 template<class CurlE, class CurlB>
 class YeeSolver
@@ -97,7 +99,12 @@ private:
                 typename CurlB::LowerMargin,
                 typename CurlB::UpperMargin
                 > BlockArea;
-//	wrapper_kernelUpdateE<AREA,cellDescription>(SuperCellSize::toRT().toDim3(), this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox());
+
+	AreaMapping<AREA,MappingDesc> mapper(cellDescription);
+//	__cudaKernel((kernelUpdateE<BlockArea, CurlB>))(mapper.getGridDim(),SuperCellSize::toRT().toDim3())
+//			(this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox(),mapper);
+
+	wrapper_kernelUpdateE<BlockArea, CurlB>(mapper.getGridDim(),SuperCellSize::toRT().toDim3(), this->fieldE->getDeviceDataBox(), this->fieldB->getDeviceDataBox(),mapper);
 /*
         __picKernelArea((kernelUpdateE<BlockArea, CurlB>), cellDescription, AREA)
                 (SuperCellSize::toRT().toDim3())
@@ -113,6 +120,12 @@ private:
                 typename CurlE::LowerMargin,
                 typename CurlE::UpperMargin
                 > BlockArea;
+
+	AreaMapping<AREA,MappingDesc> mapper(cellDescription);
+//	__cudaKernel((kernelUpdateBHalf<BlockArea, CurlE>))(mapper.getGridDim(),SuperCellSize::toRT().toDim3())(this->fieldB->getDeviceDataBox(),
+//                this->fieldE->getDeviceDataBox(),mapper);
+
+        wrapper_kernelUpdateBHalf<BlockArea, CurlE>(mapper.getGridDim(),SuperCellSize::toRT().toDim3(), this->fieldB->getDeviceDataBox(), this->fieldE->getDeviceDataBox(),mapper);
 /*
         __picKernelArea((kernelUpdateBHalf<BlockArea, CurlE>), cellDescription, AREA)
                 (SuperCellSize::toRT().toDim3())

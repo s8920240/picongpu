@@ -345,6 +345,18 @@ private:
         }
     }
 
+template<class FRAME, class BinBox, class Mapping>
+__host__ void wrapper_kernelBinEnergyParticles(dim3 grid, dim3 block, size_t shared, ParticlesBox<FRAME, simDim> pb,
+                                         BinBox gBins, int numBins,
+                                         float_X minEnergy,
+                                         float_X maxEnergy,
+                                         float_X maximumSlopeToDetectorX,
+                                         float_X maximumSlopeToDetectorZ,
+                                         Mapping mapper)
+{
+__cudaKernel((kernelBinEnergyParticles<FRAME>))(grid, block, shared)(pb, gBins,numBins,minEnergy,maxEnergy,maxEnergy,maximumSlopeToDetectorZ,mapper);
+}
+
     template< uint32_t AREA>
     void calBinEnergyParticles(uint32_t currentStep)
     {
@@ -365,6 +377,11 @@ private:
         /* convert energy values from keV to PIConGPU units */
         const float_X minEnergy = minEnergy_keV * UNITCONV_keV_to_Joule / UNIT_ENERGY;
         const float_X maxEnergy = maxEnergy_keV * UNITCONV_keV_to_Joule / UNIT_ENERGY;
+
+	AreaMapping<AREA,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelBinEnergyParticles(mapper.getGridDim(),block,(realNumBins) * sizeof (float_X), particles->getDeviceParticlesBox(),
+             gBins->getDeviceBuffer().getDataBox(), numBins, minEnergy,
+             maxEnergy, maximumSlopeToDetectorX, maximumSlopeToDetectorZ, mapper);
 /*
         __picKernelArea(kernelBinEnergyParticles, *cellDescription, AREA)
             (block, (realNumBins) * sizeof (float_X))

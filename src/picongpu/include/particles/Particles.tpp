@@ -145,12 +145,14 @@ struct GetType
 };
 
 template<class BlockDescription_, class ParBox, class BBox, class EBox, class Mapping, class FrameSolver>
-__host__ void wrapper_kernelMoveAndMarkParticles(dim3 block, ParBox pb,
+__host__ void wrapper_kernelMoveAndMarkParticles(dim3 grid, dim3 block, ParBox pb,
                                            EBox fieldE,
                                            BBox fieldB,
                                            FrameSolver frameSolver,
                                            Mapping mapper)
 {
+    __cudaKernel((kernelMoveAndMarkParticles<BlockDescription_>))(grid,block)( pb, fieldE, fieldB, frameSolver, mapper);
+
 /*
     __picKernelArea( kernelMoveAndMarkParticles<BlockArea>, this->cellDescription, CORE + BORDER )
         (block)
@@ -181,7 +183,16 @@ void Particles<T_ParticleDescription>::update(uint32_t )
 
     dim3 block( MappingDesc::SuperCellSize::toRT().toDim3() );
 
-    //wrapper_kernelMoveAndMarkParticles(
+    AreaMapping<CORE+BORDER,MappingDesc> mapper(this->cellDescription);
+/*    __cudaKernel((kernelMoveAndMarkParticles<BlockArea>))(mapper.getGridDim(),block)( this->getDeviceParticlesBox( ),
+          this->fieldE->getDeviceDataBox( ),
+          this->fieldB->getDeviceDataBox( ),
+          FrameSolver( ),mapper);
+*/
+    wrapper_kernelMoveAndMarkParticles<BlockArea>(mapper.getGridDim(),block, this->getDeviceParticlesBox( ), this->fieldE->getDeviceDataBox( ),
+          this->fieldB->getDeviceDataBox( ),
+          FrameSolver( ),mapper);
+
 /*
     __picKernelArea( kernelMoveAndMarkParticles<BlockArea>, this->cellDescription, CORE + BORDER )
         (block)
@@ -201,12 +212,14 @@ void Particles<T_ParticleDescription>::reset( uint32_t )
 }
 
 template< typename ParBox, typename FieldBox, class Mapping>
-__host__ void wrapper_kernelFillGridWithParticles(dim3 block, ParBox pb,
+__host__ void wrapper_kernelFillGridWithParticles(dim3 grid, dim3 block, ParBox pb,
                                             bool isNotTop, DataSpace<simDim> gpuCelloffset,
                                             uint32_t seed, uint32_t gNrCellsY,
                                             FieldBox fieldTmp,
                                             Mapping mapper)
 {
+        __cudaKernel((kernelFillGridWithParticles<ParBox>))(grid,block)(pb, isNotTop,gpuCelloffset,seed,gNrCellsY,fieldTmp,mapper);
+
 /*
         __picKernelArea( kernelFillGridWithParticles, this->cellDescription, CORE + BORDER + GUARD )
             (block)
@@ -249,7 +262,24 @@ void Particles<T_ParticleDescription>::initFill( uint32_t currentStep )
             log<picLog::SIMULATION_STATE > ("Failed to setup gas profile");
         }
 
-	//wrapper_kernelFillGridWithParticles(
+	AreaMapping<CORE+BORDER+GUARD,MappingDesc> mapper(this->cellDescription);
+/*	__cudaKernel((kernelFillGridWithParticles))(mapper.getGridDim(),block)(
+	      this->particlesBuffer->getDeviceParticleBox( ),
+              this->particlesBuffer->hasSendExchange( TOP ),
+              gpuCellOffset,
+              seed,
+              globalNrOfCells.y( ),
+              dataBox.shift(this->fieldTmp->getGridLayout().getGuard())
+          ,mapper);
+*/
+	wrapper_kernelFillGridWithParticles(mapper.getGridDim(),block,this->particlesBuffer->getDeviceParticleBox( ),
+              this->particlesBuffer->hasSendExchange( TOP ),
+              gpuCellOffset,
+              seed,
+              globalNrOfCells.y( ),
+              dataBox.shift(this->fieldTmp->getGridLayout().getGuard())
+          ,mapper);
+
 /*
         __picKernelArea( kernelFillGridWithParticles, this->cellDescription, CORE + BORDER + GUARD )
             (block)
@@ -269,8 +299,10 @@ void Particles<T_ParticleDescription>::initFill( uint32_t currentStep )
 }
 
 template<class MYFRAME, class OTHERFRAME, class Mapping>
-__host__ void wrapper_kernelCloneParticles(dim3 block, ParticlesBox<MYFRAME, simDim> myBox, ParticlesBox<OTHERFRAME, simDim> otherBox, Mapping mapper)
+__host__ void wrapper_kernelCloneParticles(dim3 grid, dim3 block, ParticlesBox<MYFRAME, simDim> myBox, ParticlesBox<OTHERFRAME, simDim> otherBox, Mapping mapper)
 {
+   __cudaKernel((kernelCloneParticles<MYFRAME>))(grid,block)(myBox,otherBox,mapper);
+
 //    __picKernelArea( kernelCloneParticles, this->cellDescription, CORE + BORDER + GUARD )
 //        (block) ( this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ) );
 }
@@ -281,7 +313,11 @@ void Particles<T_ParticleDescription>::deviceCloneFrom( Particles< t_ParticleDes
 {
     dim3 block( TILE_SIZE );
 
-   // wrapper_kernelCloneParticles(block,  this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ), this->cellDescription, CORE + BORDER + GUARD);
+   AreaMapping<CORE+BORDER+GUARD,MappingDesc> mapper(this->cellDescription);
+/*   __cudaKernel((kernelCloneParticles))(mapper.getGridDim(),block)(
+	      this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ), mapper);
+*/
+   wrapper_kernelCloneParticles(mapper.getGridDim(),block,  this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ), mapper);
 /*
     __picKernelArea( kernelCloneParticles, this->cellDescription, CORE + BORDER + GUARD )
         (block) ( this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ) );
@@ -294,8 +330,10 @@ void Particles<T_ParticleDescription>::deviceCloneFrom( Particles< t_ParticleDes
 }
 
 template<class FRAME, class Mapping>
-__host__ void wrapper_kernelAddTemperature(dim3 block, ParticlesBox<FRAME, simDim> pb, float_X energy, uint32_t seed, Mapping mapper)
+__host__ void wrapper_kernelAddTemperature(dim3 grid, dim3 block, ParticlesBox<FRAME, simDim> pb, float_X energy, uint32_t seed, Mapping mapper)
 {
+   __cudaKernel((kernelAddTemperature<FRAME>))(grid,block)(pb, energy, seed, mapper);
+
 //    __picKernelArea( kernelAddTemperature, this->cellDescription, CORE + BORDER + GUARD )
 //        (block) ( this->getDeviceParticlesBox( ), energy, seed );
 }
@@ -310,7 +348,11 @@ void Particles<T_ParticleDescription>::deviceAddTemperature( float_X energy )
     uint32_t seed = seedPerRank( globalSeed(), FrameType::CommunicationTag );
     seed ^= TEMPERATURE_SEED;
 
-    //wrapper_kernelAddTemperature(
+    AreaMapping<CORE+BORDER+GUARD,MappingDesc> mapper(this->cellDescription);
+//   __cudaKernel((kernelAddTemperature))(mapper.getGridDim(),block)(
+//              this->getDeviceParticlesBox( ), energy, seed, mapper);
+
+    wrapper_kernelAddTemperature(mapper.getGridDim(),block, this->getDeviceParticlesBox( ), energy, seed, mapper);
 /*
     __picKernelArea( kernelAddTemperature, this->cellDescription, CORE + BORDER + GUARD )
         (block) ( this->getDeviceParticlesBox( ), energy, seed );
@@ -320,11 +362,13 @@ void Particles<T_ParticleDescription>::deviceAddTemperature( float_X energy )
 }
 
 template< typename ParBox, class Mapping>
-__host__ void wrapper_kernelSetDrift(dim3 block, ParBox pb,
+__host__ void wrapper_kernelSetDrift(dim3 grid, dim3 block, ParBox pb,
                                uint32_t offsetY,
                                const int gNrCellsY,
                                Mapping mapper)
 {
+    __cudaKernel((kernelSetDrift<ParBox>))(grid,block)(pb, offsetY, gNrCellsY, mapper);
+
 /*
     __picKernelArea( kernelSetDrift, this->cellDescription, CORE + BORDER + GUARD )
         (block)
@@ -350,7 +394,16 @@ void Particles<T_ParticleDescription>::deviceSetDrift( uint32_t currentStep )
     uint32_t simulationYCell = simBox.getGlobalOffset( ).y( ) +
         ( numSlides * localNrOfCells.y( ) );
 
-    //wrapper_kernelSetDrift(
+    AreaMapping<CORE+BORDER+GUARD,MappingDesc> mapper(this->cellDescription);
+/*    __cudaKernel((kernelSetDrift))(mapper.getGridDim(),block)(
+ this->particlesBuffer->getDeviceParticleBox( ),
+          simulationYCell,
+          globalNrOfCells.y( ), mapper);
+*/
+    wrapper_kernelSetDrift(mapper.getGridDim(),block, this->particlesBuffer->getDeviceParticleBox( ),
+          simulationYCell,
+          globalNrOfCells.y( ), mapper);
+
 /*
     __picKernelArea( kernelSetDrift, this->cellDescription, CORE + BORDER + GUARD )
         (block)

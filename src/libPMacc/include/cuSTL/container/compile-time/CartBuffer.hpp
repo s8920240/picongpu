@@ -78,5 +78,4 @@ public:
 } // PMacc
 
 #include "CartBuffer.tpp"
-
 #endif // CONTAINER_CT_CTCARTBUFFER_HPP

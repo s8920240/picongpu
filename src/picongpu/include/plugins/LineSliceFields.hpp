@@ -239,6 +239,16 @@ namespace picongpu
             }
         }
 
+    template<class Mapping>
+    __host__ void wrapper_kernelLineSliceFields(dim3 grid, dim3 block, E_DataBox fieldE, B_DataBox fieldB,
+    float3_X* sliceDataField,
+    DataSpace<simDim> globalCellIdOffset,
+    DataSpace<simDim> globalNrOfCells,
+    Mapping mapper)
+    {
+	__cudaKernel((kernelLineSliceFields))(grid, block)(fieldE,fieldB,sliceDataField,globalCellIdOffset,globalNrOfCells,mapper);	
+    }
+
         template< uint32_t AREA>
         void getLineSliceFields()
         {
@@ -260,6 +270,11 @@ namespace picongpu
             const DataSpace<simDim> localNrOfCells(simBox.getLocalSize());
             const DataSpace<simDim> globalNrOfCells (simBox.getGlobalSize());
 
+	    AreaMapping<AREA,MappingDesc> mapper(*cellDescription);
+	    wrapper_kernelLineSliceFields(mapper.getGridDim(),block,fieldE->getDeviceDataBox(),
+                    fieldB->getDeviceDataBox(),
+                    sliceDataField->getDeviceBuffer().getBasePointer(),globalCellIdOffset,
+                    globalNrOfCells, mapper);
 /*
             __picKernelArea(kernelLineSliceFields, *cellDescription, AREA)
                     (block)

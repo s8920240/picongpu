@@ -430,7 +430,7 @@ kernelPaintParticles3D(ParBox pb,
 
 template<class ParBox, class Mapping>
 __host__ void
-wrapper_kernelPaintParticles3D(dim3 block, ParBox pb,
+wrapper_kernelPaintParticles3D(dim3 grid, dim3 block, size_t shared, ParBox pb,
                        DataBox<PitchedBox<float3_X, DIM2> > image,
                        DataSpace<DIM2> transpose,
                        int slice,
@@ -438,6 +438,7 @@ wrapper_kernelPaintParticles3D(dim3 block, ParBox pb,
                        uint32_t sliceDim,
                        Mapping mapper)
 {
+__cudaKernel((kernelPaintParticles3D<ParBox>))(grid,block,shared)(pb, image,transpose,slice,globalOffset,sliceDim,mapper);
 /*
         __picKernelArea((kernelPaintParticles3D), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (int))
@@ -451,7 +452,7 @@ wrapper_kernelPaintParticles3D(dim3 block, ParBox pb,
 }
 
 template<class EBox, class BBox, class JBox, class Mapping>
-__host__ void wrapper_kernelPaintFields(dim3 block,
+__host__ void wrapper_kernelPaintFields(dim3 grid, dim3 block,
                                   EBox fieldE,
                                   BBox fieldB,
                                   JBox fieldJ,
@@ -462,6 +463,8 @@ __host__ void wrapper_kernelPaintFields(dim3 block,
                                   const uint32_t sliceDim,
                                   Mapping mapper)
 {
+__cudaKernel((kernelPaintFields<EBox>))(grid,block)(fieldE,fieldB,fieldJ, image,transpose,slice,globalOffset,sliceDim,mapper);
+
 /*
         __picKernelArea((kernelPaintFields), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3())
@@ -611,7 +614,14 @@ public:
         typedef MappingDesc::SuperCellSize SuperCellSize;
         assert(cellDescription != NULL);
         //create image fields
-	//wrapper_kernelPaintFields(
+	AreaMapping<CORE+BORDER,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelPaintFields(mapper.getGridDim(), SuperCellSize::toRT().toDim3(), fieldE->getDeviceDataBox(),
+             fieldB->getDeviceDataBox(),
+             fieldJ->getDeviceDataBox(),
+             img->getDeviceBuffer().getDataBox(),
+             transpose,
+             sliceOffset,
+             globalOffset, sliceDim, mapper);
 /*
         __picKernelArea((kernelPaintFields), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3())
@@ -667,7 +677,12 @@ public:
         DataSpace<DIM2> blockSize2D(blockSize[transpose.x()], blockSize[transpose.y()]);
 
         //create image particles
-	//wrapper_kernelPaintParticles3D(
+	wrapper_kernelPaintParticles3D(mapper.getGridDim(), SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (int),
+		particles->getDeviceParticlesBox(),
+             img->getDeviceBuffer().getDataBox(),
+             transpose,
+             sliceOffset,
+             globalOffset, sliceDim, mapper);
 /*
         __picKernelArea((kernelPaintParticles3D), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (int))

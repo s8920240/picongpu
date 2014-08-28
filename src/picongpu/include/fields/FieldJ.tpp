@@ -278,21 +278,22 @@ __cudaKernel( ( kernelComputeCurrent<workerMultiplier,BlockArea, AREA> ) )
     __setTransactionEvent( __endTransaction( ) );
 }
 
-template<uint32_t AREA>
-__host__ void wrapper_kernelAddCurrentToE(dim3 grid, typename FieldE::DataBoxType fieldE,
-                                    J_DataBox fieldJ, MappingDesc cellDescription)
+template<class Mapping>
+__host__ void wrapper_kernelAddCurrentToE(dim3 grid, dim3 block, typename FieldE::DataBoxType fieldE,
+                                    J_DataBox fieldJ,
+                                    Mapping mapper)
 {
-    __picKernelArea( ( kernelAddCurrentToE ),
-                     cellDescription,
-                     AREA )
-        ( grid )(fieldE, fieldJ);
+	__cudaKernel((kernelAddCurrentToE))(grid,block)(fieldE, fieldJ,mapper);
 }
 
 template<uint32_t AREA>
 void FieldJ::addCurrentToE( )
 {
-    wrapper_kernelAddCurrentToE<AREA>(MappingDesc::SuperCellSize::toRT( ).toDim3(),  this->fieldE->getDeviceDataBox( ),
-          this->fieldJ.getDeviceBuffer( ).getDataBox( ), cellDescription );
+
+AreaMapping<AREA,MappingDesc> mapper(cellDescription);
+wrapper_kernelAddCurrentToE(mapper.getGridDim(),MappingDesc::SuperCellSize::toRT( ).toDim3(),  this->fieldE->getDeviceDataBox( ),
+          this->fieldJ.getDeviceBuffer( ).getDataBox( ), mapper );
+
 /*
     __picKernelArea( ( kernelAddCurrentToE ),
                      cellDescription,

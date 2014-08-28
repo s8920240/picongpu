@@ -247,6 +247,14 @@ private:
         __delete(gParticle);
     }
 
+template<class FRAME, class FloatPos, class Mapping>
+__host__ void wrapper_kernelPositionsParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, simDim> pb,
+                                         SglParticle<FloatPos>* gParticle,
+                                         Mapping mapper)
+{
+	__cudaKernel((kernelPositionsParticles<FRAME>))(grid, block)(pb, gParticle,mapper);
+}
+
     template< uint32_t AREA>
     SglParticle<FloatPos> getPositionsParticles(uint32_t currentStep)
     {
@@ -256,6 +264,10 @@ private:
 
         gParticle->getDeviceBuffer().setValue(positionParticleTmp);
         dim3 block(SuperCellSize::toRT().toDim3());
+
+	AreaMapping<AREA,MappingDesc> mapper(*cellDescription);
+	wrapper_kernelPositionsParticles(mapper.getGridDim(), block, particles->getDeviceParticlesBox(),
+             gParticle->getDeviceBuffer().getBasePointer(), mapper);
 /*
         __picKernelArea(kernelPositionsParticles, *cellDescription, AREA)
             (block)

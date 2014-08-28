@@ -33,6 +33,13 @@
 
 namespace PMacc
 {
+    
+    template< class T_ParticleBox, class Mapping>
+    __host__ void wrapper_kernelDeleteParticles(dim3 grid, dim3 block, T_ParticleBox pb, Mapping mapper)
+    { 
+        __cudaKernel(kernelDeleteParticles<T_ParticleBox>) (grid, block)(pb, mapper);
+    }
+
     template<typename T_ParticleDescription, class MappingDesc>
     void ParticlesBase<T_ParticleDescription, MappingDesc>::deleteGuardParticles(uint32_t exchangeType)
     {
@@ -40,9 +47,22 @@ namespace PMacc
         ExchangeMapping<GUARD, MappingDesc> mapper(this->cellDescription, exchangeType);
         dim3 grid(mapper.getGridDim());
 
+	wrapper_kernelDeleteParticles(grid, TileSize,particlesBuffer->getDeviceParticleBox(), mapper);
+/*
         __cudaKernel(kernelDeleteParticles)
                 (grid, TileSize)
                 (particlesBuffer->getDeviceParticleBox(), mapper);
+*/
+    }
+
+
+    template< class FRAME, class BORDER, class Mapping>
+    __host__ void wrapper_kernelBashParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb,
+                                    ExchangePushDataBox<vint_t, BORDER, Mapping::Dim - 1 > border,
+                                    Mapping mapper)
+    { 
+            __cudaKernel(kernelBashParticles<FRAME>)
+                    (grid, block)(pb,border, mapper);
     }
 
     template<typename T_ParticleDescription, class MappingDesc>
@@ -55,11 +75,24 @@ namespace PMacc
             particlesBuffer->getSendExchangeStack(exchangeType).setCurrentSize(0);
             dim3 grid(mapper.getGridDim());
 
+	    wrapper_kernelBashParticles(grid, TileSize, particlesBuffer->getDeviceParticleBox(),
+                    particlesBuffer->getSendExchangeStack(exchangeType).getDeviceExchangePushDataBox(), mapper);
+/*
             __cudaKernel(kernelBashParticles)
                     (grid, TileSize)
                     (particlesBuffer->getDeviceParticleBox(),
                     particlesBuffer->getSendExchangeStack(exchangeType).getDeviceExchangePushDataBox(), mapper);
+*/
         }
+    }
+
+    template<class FRAME, class BORDER, class Mapping>
+    __host__ void wrapper_kernelInsertParticles(dim3 grid, dim3 block, ParticlesBox<FRAME, Mapping::Dim> pb,
+                                      ExchangePopDataBox<vint_t, BORDER, Mapping::Dim - 1 > border,
+                                      Mapping mapper)
+    {
+                __cudaKernel(kernelInsertParticles<FRAME>)(grid, block)
+                        (pb, border, mapper);
     }
 
     template<typename T_ParticleDescription, class MappingDesc>
@@ -73,11 +106,16 @@ namespace PMacc
             {
               //  std::cout<<"insert = "<<grid.x()<<std::endl;
                 ExchangeMapping<GUARD, MappingDesc> mapper(this->cellDescription, exchangeType);
+		wrapper_kernelInsertParticles(grid, TileSize, particlesBuffer->getDeviceParticleBox(),
+                        particlesBuffer->getReceiveExchangeStack(exchangeType).getDeviceExchangePopDataBox(),
+                        mapper);
+/*
                 __cudaKernel(kernelInsertParticles)
                         (grid, TileSize)
                         (particlesBuffer->getDeviceParticleBox(),
                         particlesBuffer->getReceiveExchangeStack(exchangeType).getDeviceExchangePopDataBox(),
                         mapper);
+*/
                 }
         }
     }
