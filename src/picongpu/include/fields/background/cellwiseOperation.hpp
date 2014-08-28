@@ -66,6 +66,14 @@ namespace cellwiseOperation
                  );
     }
 
+    template<class T_OpFunctor,class T_ValFunctor,class FieldBox,class Mapping,uint32_t T_Area>
+    __host__ void wrapper_kernelCellwiseOperation(dim3 grid, FieldBox field, T_OpFunctor opFunctor, T_ValFunctor valFunctor, const DataSpace<simDim> totalCellOffset,const uint32_t currentStep, Mapping mapper, MappingDesc cellDescription )
+    {
+            __picKernelArea((kernelCellwiseOperation<T_OpFunctor>), cellDescription, T_Area)
+                    (grid)
+                    (field, opFunctor, valFunctor, totalCellOffset, currentStep);
+    }
+
     /** Call a functor on each cell of a field
      *
      *  \tparam T_Area Where to compute on (CORE, BORDER, GUARD)
@@ -112,9 +120,12 @@ namespace cellwiseOperation
                 totalCellOffset += cellDescription.getSuperCellSize() * cellDescription.getBorderSuperCells();
 
             /* start kernel */
+	 //   wrapper_kernelCellwiseOperation(SuperCellSize::toRT().toDim3(),field->getDeviceDataBox(), opFunctor, valFunctor, totalCellOffset, currentStep, T_Area, cellDescription);
+/*
             __picKernelArea((kernelCellwiseOperation<T_OpFunctor>), cellDescription, T_Area)
                     (SuperCellSize::toRT().toDim3())
                     (field->getDeviceDataBox(), opFunctor, valFunctor, totalCellOffset, currentStep);
+*/
         }
     };
 

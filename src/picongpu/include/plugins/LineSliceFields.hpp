@@ -260,7 +260,7 @@ namespace picongpu
             const DataSpace<simDim> localNrOfCells(simBox.getLocalSize());
             const DataSpace<simDim> globalNrOfCells (simBox.getGlobalSize());
 
-
+/*
             __picKernelArea(kernelLineSliceFields, *cellDescription, AREA)
                     (block)
                     (fieldE->getDeviceDataBox(),
@@ -269,6 +269,7 @@ namespace picongpu
                     globalCellIdOffset,
                     globalNrOfCells
                     );
+*/
             sliceDataField->deviceToHost();
             //return sliceDataField->getHostBuffer().getDataBox()[0];
         }

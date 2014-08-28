@@ -257,6 +257,7 @@ public:
 
 
         //create density image of particles
+/*
         __picKernelArea((kernelParticleDensity), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (float_X))
             (particles->getDeviceParticlesBox(),
@@ -265,7 +266,7 @@ public:
              sliceOffset,
              globalOffset, sliceDim
              );
-
+*/
 
         img->deviceToHost();
 

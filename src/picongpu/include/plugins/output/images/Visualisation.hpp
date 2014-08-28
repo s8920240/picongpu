@@ -428,6 +428,53 @@ kernelPaintParticles3D(ParBox pb,
     }
 }
 
+template<class ParBox, class Mapping>
+__host__ void
+wrapper_kernelPaintParticles3D(dim3 block, ParBox pb,
+                       DataBox<PitchedBox<float3_X, DIM2> > image,
+                       DataSpace<DIM2> transpose,
+                       int slice,
+                       uint32_t globalOffset,
+                       uint32_t sliceDim,
+                       Mapping mapper)
+{
+/*
+        __picKernelArea((kernelPaintParticles3D), *cellDescription, CORE + BORDER)
+            (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (int))
+            (particles->getDeviceParticlesBox(),
+             img->getDeviceBuffer().getDataBox(),
+             transpose,
+             sliceOffset,
+             globalOffset, sliceDim
+             );
+*/
+}
+
+template<class EBox, class BBox, class JBox, class Mapping>
+__host__ void wrapper_kernelPaintFields(dim3 block,
+                                  EBox fieldE,
+                                  BBox fieldB,
+                                  JBox fieldJ,
+                                  DataBox<PitchedBox<float3_X, DIM2> > image,
+                                  DataSpace<DIM2> transpose,
+                                  const int slice,
+                                  const uint32_t globalOffset,
+                                  const uint32_t sliceDim,
+                                  Mapping mapper)
+{
+/*
+        __picKernelArea((kernelPaintFields), *cellDescription, CORE + BORDER)
+            (SuperCellSize::toRT().toDim3())
+            (fieldE->getDeviceDataBox(),
+             fieldB->getDeviceDataBox(),
+             fieldJ->getDeviceDataBox(),
+             img->getDeviceBuffer().getDataBox(),
+             transpose,
+             sliceOffset,
+             globalOffset, sliceDim
+             );
+*/
+}
 
 namespace vis_kernels
 {
@@ -564,6 +611,8 @@ public:
         typedef MappingDesc::SuperCellSize SuperCellSize;
         assert(cellDescription != NULL);
         //create image fields
+	//wrapper_kernelPaintFields(
+/*
         __picKernelArea((kernelPaintFields), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3())
             (fieldE->getDeviceDataBox(),
@@ -574,7 +623,7 @@ public:
              sliceOffset,
              globalOffset, sliceDim
              );
-
+*/
         // find maximum for img.x()/y and z and return it as float3_X
         int elements = img->getGridLayout().getDataSpace().productOfComponents();
 
@@ -618,6 +667,8 @@ public:
         DataSpace<DIM2> blockSize2D(blockSize[transpose.x()], blockSize[transpose.y()]);
 
         //create image particles
+	//wrapper_kernelPaintParticles3D(
+/*
         __picKernelArea((kernelPaintParticles3D), *cellDescription, CORE + BORDER)
             (SuperCellSize::toRT().toDim3(), blockSize2D.productOfComponents() * sizeof (int))
             (particles->getDeviceParticlesBox(),
@@ -626,7 +677,7 @@ public:
              sliceOffset,
              globalOffset, sliceDim
              );
-
+*/
         // send the RGB image back to host
         img->deviceToHost();
 

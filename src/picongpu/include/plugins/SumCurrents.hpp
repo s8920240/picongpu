@@ -188,11 +188,12 @@ private:
     {
         sumcurrents->getDeviceBuffer().setValue(float3_X(float_X(0.0), float_X(0.0), float_X(0.0)));
         dim3 block(MappingDesc::SuperCellSize::toRT().toDim3());
-
+/*
         __picKernelArea(kernelSumCurrents, *cellDescription, CORE + BORDER)
             (block)
             (fieldJ->getDeviceDataBox(),
              sumcurrents->getDeviceBuffer().getBasePointer());
+*/
         sumcurrents->deviceToHost();
         return sumcurrents->getHostBuffer().getDataBox()[0];
     }

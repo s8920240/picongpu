@@ -365,13 +365,13 @@ private:
         /* convert energy values from keV to PIConGPU units */
         const float_X minEnergy = minEnergy_keV * UNITCONV_keV_to_Joule / UNIT_ENERGY;
         const float_X maxEnergy = maxEnergy_keV * UNITCONV_keV_to_Joule / UNIT_ENERGY;
-
+/*
         __picKernelArea(kernelBinEnergyParticles, *cellDescription, AREA)
             (block, (realNumBins) * sizeof (float_X))
             (particles->getDeviceParticlesBox(),
              gBins->getDeviceBuffer().getDataBox(), numBins, minEnergy,
              maxEnergy, maximumSlopeToDetectorX, maximumSlopeToDetectorZ);
-
+*/
         gBins->deviceToHost();
 
         reduce(nvidia::functors::Add(),

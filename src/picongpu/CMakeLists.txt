@@ -30,7 +30,6 @@ cmake_minimum_required(VERSION 2.8.5)
 ################################################################################
 
 project(PIConGPU)
-
 # set helper pathes to find libraries and packages
 set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/" "$ENV{MPI_ROOT}"
     "$ENV{CUDA_ROOT}" "$ENV{BOOST_ROOT}" "$ENV{HDF5_ROOT}" "$ENV{VT_ROOT}")
@@ -43,45 +42,45 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/
 # Find CUDA 
 ################################################################################
 
-find_package(CUDA 5.0 REQUIRED)
+#find_package(CUDA 5.0 REQUIRED)
 
-if(CUDA_VERSION VERSION_LESS 5.5)
-    message(STATUS "CUDA Toolkit < 5.5 detected. We strongly recommend to still "
-                   "use CUDA 5.5+ drivers (319.82 or higher)!")
-endif(CUDA_VERSION VERSION_LESS 5.5)
+#if(CUDA_VERSION VERSION_LESS 5.5)
+#    message(STATUS "CUDA Toolkit < 5.5 detected. We strongly recommend to still "
+#                   "use CUDA 5.5+ drivers (319.82 or higher)!")
+#endif(CUDA_VERSION VERSION_LESS 5.5)
 
-set(CUDA_ARCH sm_20 CACHE STRING "Set GPU architecture")
-string(COMPARE EQUAL ${CUDA_ARCH} "sm_10" IS_CUDA_ARCH_UNSUPPORTED)
-string(COMPARE EQUAL ${CUDA_ARCH} "sm_11" IS_CUDA_ARCH_UNSUPPORTED)
-string(COMPARE EQUAL ${CUDA_ARCH} "sm_12" IS_CUDA_ARCH_UNSUPPORTED)
-string(COMPARE EQUAL ${CUDA_ARCH} "sm_13" IS_CUDA_ARCH_UNSUPPORTED)
+#set(CUDA_ARCH sm_20 CACHE STRING "Set GPU architecture")
+#string(COMPARE EQUAL ${CUDA_ARCH} "sm_10" IS_CUDA_ARCH_UNSUPPORTED)
+#string(COMPARE EQUAL ${CUDA_ARCH} "sm_11" IS_CUDA_ARCH_UNSUPPORTED)
+#string(COMPARE EQUAL ${CUDA_ARCH} "sm_12" IS_CUDA_ARCH_UNSUPPORTED)
+#string(COMPARE EQUAL ${CUDA_ARCH} "sm_13" IS_CUDA_ARCH_UNSUPPORTED)
 
-if(IS_CUDA_ARCH_UNSUPPORTED)
-    message(FATAL_ERROR "Unsupported CUDA architecture ${CUDA_ARCH} specified. "
-                       "SM 2.0 or higher is required.")
-endif(IS_CUDA_ARCH_UNSUPPORTED)
+#if(IS_CUDA_ARCH_UNSUPPORTED)
+#    message(FATAL_ERROR "Unsupported CUDA architecture ${CUDA_ARCH} specified. "
+#                       "SM 2.0 or higher is required.")
+#endif(IS_CUDA_ARCH_UNSUPPORTED)
 
-set(CUDA_FTZ "--ftz=false" CACHE STRING "Set flush to zero for GPU")
+#set(CUDA_FTZ "--ftz=false" CACHE STRING "Set flush to zero for GPU")
 
-set(CUDA_MATH --use_fast_math CACHE STRING "Enable fast-math" )
-option(CUDA_SHOW_REGISTER "Show kernel registers and create PTX" OFF)
-option(CUDA_KEEP_FILES "Keep all intermediate files that are generated during internal compilation steps (folder: nvcc_tmp)" OFF)
-option(CUDA_SHOW_CODELINES "Show kernel lines in cuda-gdb and cuda-memcheck" OFF)
+#set(CUDA_MATH --use_fast_math CACHE STRING "Enable fast-math" )
+#option(CUDA_SHOW_REGISTER "Show kernel registers and create PTX" OFF)
+#option(CUDA_KEEP_FILES "Keep all intermediate files that are generated during internal compilation steps (folder: nvcc_tmp)" OFF)
+#option(CUDA_SHOW_CODELINES "Show kernel lines in cuda-gdb and cuda-memcheck" OFF)
 
-if(CUDA_SHOW_CODELINES)
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" --source-in-ptx -Xcompiler -rdynamic -lineinfo)
-    set(CUDA_KEEP_FILES ON CACHE BOOL "activate keep files" FORCE)
-endif(CUDA_SHOW_CODELINES)
+#if(CUDA_SHOW_CODELINES)
+#    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" --source-in-ptx -Xcompiler -rdynamic -lineinfo)
+#    set(CUDA_KEEP_FILES ON CACHE BOOL "activate keep files" FORCE)
+#endif(CUDA_SHOW_CODELINES)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${nvcc_flags} -arch=${CUDA_ARCH} ${CUDA_MATH} ${CUDA_FTZ})
-if(CUDA_SHOW_REGISTER)
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" -Xptxas=-v)
-endif(CUDA_SHOW_REGISTER)
+#set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${nvcc_flags} -arch=${CUDA_ARCH} ${CUDA_MATH} ${CUDA_FTZ})
+#if(CUDA_SHOW_REGISTER)
+#    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" -Xptxas=-v)
+#endif(CUDA_SHOW_REGISTER)
 
-if(CUDA_KEEP_FILES)
-    make_directory("${PROJECT_BINARY_DIR}/nvcc_tmp")
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" --keep --keep-dir "${PROJECT_BINARY_DIR}/nvcc_tmp")
-endif(CUDA_KEEP_FILES)
+#if(CUDA_KEEP_FILES)
+#    make_directory("${PROJECT_BINARY_DIR}/nvcc_tmp")
+#    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" --keep --keep-dir "${PROJECT_BINARY_DIR}/nvcc_tmp")
+#endif(CUDA_KEEP_FILES)
 
 
 ################################################################################
@@ -185,8 +184,8 @@ if(SCOREP_ENABLE)
     endif(SCOREP_ENABLE)
 
     # modify our flags
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${SCOREP_LINKFLAGS} -target=compute_node")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SCOREP_COMPILEFLAGS} -target=compute_node")
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${SCOREP_LINKFLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SCOREP_COMPILEFLAGS}")
 endif(SCOREP_ENABLE)
 
 
@@ -282,29 +281,29 @@ endif(PARAM_OVERWRITES)
 # load cuda_memtest project
 ################################################################################
 
-set(SAME_NVCC_FLAGS_IN_SUBPROJECTS OFF)
-find_path(CUDA_MEMTEST_DIR
-        NAMES CMakeLists.txt
-        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../cuda_memtest"
-        DOC "path to cuda_memtest"
-        )
+#set(SAME_NVCC_FLAGS_IN_SUBPROJECTS OFF)
+#find_path(CUDA_MEMTEST_DIR
+#        NAMES CMakeLists.txt
+#        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../cuda_memtest"
+#        DOC "path to cuda_memtest"
+#        )
 
-add_subdirectory(${CUDA_MEMTEST_DIR}
-                 "${CMAKE_CURRENT_BINARY_DIR}/build_cuda_memtest")
+#add_subdirectory(${CUDA_MEMTEST_DIR}
+#                 "${CMAKE_CURRENT_BINARY_DIR}/build_cuda_memtest")
 
 
 ################################################################################
 # Load mpiInfo project
 ################################################################################
 
-find_path(MPI_INFO_DIR
-        NAMES CMakeLists.txt
-        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../mpiInfo"
-        DOC "path to mpiInfo"
-        )
+#find_path(MPI_INFO_DIR
+#        NAMES CMakeLists.txt
+#        PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../mpiInfo"
+#        DOC "path to mpiInfo"
+#        )
 
-add_subdirectory(${MPI_INFO_DIR}
-                 "${CMAKE_CURRENT_BINARY_DIR}/build_mpiInfo")
+#add_subdirectory(${MPI_INFO_DIR}
+#                 "${CMAKE_CURRENT_BINARY_DIR}/build_mpiInfo")
 
 
 ################################################################################
@@ -336,6 +335,10 @@ find_package(ADIOS 1.6.0)
 
 if(ADIOS_FOUND)
     add_definitions(-DENABLE_ADIOS=1)
+    if(NOT (ADIOS_VERSION VERSION_LESS 1.7.0))
+        message(STATUS "Enable ADIOS data transforms")
+        add_definitions(-DADIOS_TRANSFORMS=1)
+    endif(NOT (ADIOS_VERSION VERSION_LESS 1.7.0))
 
     include_directories(SYSTEM ${ADIOS_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${ADIOS_LIBRARIES})
@@ -436,18 +439,25 @@ include_directories(BEFORE ${PIC_EXTENSION_PATH}/include)
 # Compile & Link PIConGPU
 ################################################################################
 
+#list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS "cu")
+#SET(CUDA_HOST_COMPILATION_CPP ON)
+#set(CMAKE_CXX_SOURCE_FILE_EXTENSIONS C;M;c++;cc;cpp;cxx;m;mm;CPP;cu)
 file(GLOB CUDASRCFILES "*.cu")
 file(GLOB SRCFILES "*.cpp")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Mcudax86=cuda5.5 -D__CUDA_ARCH__=350")
 
-
-cuda_add_executable(picongpu
+SET_SOURCE_FILES_PROPERTIES(main.cu PROPERTIES LANGUAGE CXX)
+add_executable(picongpu
+    main.cu
     ${CUDASRCFILES}
     ${SRCFILES}
     ${SCOREP_SRCFILES}
 )
 
-target_link_libraries(picongpu  ${LIBS} ${CUDA_CUDART_LIBRARY} z m)
+
+#target_link_libraries(picongpu  ${LIBS} ${CUDA_CUDART_LIBRARY}  z m)
+target_link_libraries(picongpu  ${LIBS}   z m)
 
 if(SCOREP_ENABLE)
     # Score-P libraries must be linked after the object to prevent symbols

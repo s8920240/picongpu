@@ -144,6 +144,24 @@ struct GetType
     typedef typename T::type type;
 };
 
+template<class BlockDescription_, class ParBox, class BBox, class EBox, class Mapping, class FrameSolver>
+__host__ void wrapper_kernelMoveAndMarkParticles(dim3 block, ParBox pb,
+                                           EBox fieldE,
+                                           BBox fieldB,
+                                           FrameSolver frameSolver,
+                                           Mapping mapper)
+{
+/*
+    __picKernelArea( kernelMoveAndMarkParticles<BlockArea>, this->cellDescription, CORE + BORDER )
+        (block)
+        ( this->getDeviceParticlesBox( ),
+          this->fieldE->getDeviceDataBox( ),
+          this->fieldB->getDeviceDataBox( ),
+          FrameSolver( )
+          );
+*/
+}
+
 template<typename T_ParticleDescription>
 void Particles<T_ParticleDescription>::update(uint32_t )
 {
@@ -163,6 +181,8 @@ void Particles<T_ParticleDescription>::update(uint32_t )
 
     dim3 block( MappingDesc::SuperCellSize::toRT().toDim3() );
 
+    //wrapper_kernelMoveAndMarkParticles(
+/*
     __picKernelArea( kernelMoveAndMarkParticles<BlockArea>, this->cellDescription, CORE + BORDER )
         (block)
         ( this->getDeviceParticlesBox( ),
@@ -170,7 +190,7 @@ void Particles<T_ParticleDescription>::update(uint32_t )
           this->fieldB->getDeviceDataBox( ),
           FrameSolver( )
           );
-
+*/
     ParticlesBaseType::template shiftParticles < CORE + BORDER > ( );
 }
 
@@ -178,6 +198,25 @@ template< typename T_ParticleDescription>
 void Particles<T_ParticleDescription>::reset( uint32_t )
 {
     this->particlesBuffer->reset( );
+}
+
+template< typename ParBox, typename FieldBox, class Mapping>
+__host__ void wrapper_kernelFillGridWithParticles(dim3 block, ParBox pb,
+                                            bool isNotTop, DataSpace<simDim> gpuCelloffset,
+                                            uint32_t seed, uint32_t gNrCellsY,
+                                            FieldBox fieldTmp,
+                                            Mapping mapper)
+{
+/*
+        __picKernelArea( kernelFillGridWithParticles, this->cellDescription, CORE + BORDER + GUARD )
+            (block)
+            ( this->particlesBuffer->getDeviceParticleBox( ),
+              this->particlesBuffer->hasSendExchange( TOP ),
+              gpuCellOffset,
+              seed,
+              globalNrOfCells.y( ),
+              dataBox.shift(this->fieldTmp->getGridLayout().getGuard()));
+*/
 }
 
 template< typename T_ParticleDescription>
@@ -210,6 +249,8 @@ void Particles<T_ParticleDescription>::initFill( uint32_t currentStep )
             log<picLog::SIMULATION_STATE > ("Failed to setup gas profile");
         }
 
+	//wrapper_kernelFillGridWithParticles(
+/*
         __picKernelArea( kernelFillGridWithParticles, this->cellDescription, CORE + BORDER + GUARD )
             (block)
             ( this->particlesBuffer->getDeviceParticleBox( ),
@@ -218,6 +259,7 @@ void Particles<T_ParticleDescription>::initFill( uint32_t currentStep )
               seed,
               globalNrOfCells.y( ),
               dataBox.shift(this->fieldTmp->getGridLayout().getGuard()));
+*/
     }
 
     this->fillAllGaps( );
@@ -226,19 +268,36 @@ void Particles<T_ParticleDescription>::initFill( uint32_t currentStep )
     __getTransactionEvent( ).waitForFinished( );
 }
 
+template<class MYFRAME, class OTHERFRAME, class Mapping>
+__host__ void wrapper_kernelCloneParticles(dim3 block, ParticlesBox<MYFRAME, simDim> myBox, ParticlesBox<OTHERFRAME, simDim> otherBox, Mapping mapper)
+{
+//    __picKernelArea( kernelCloneParticles, this->cellDescription, CORE + BORDER + GUARD )
+//        (block) ( this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ) );
+}
+
 template< typename T_ParticleDescription>
 template< typename t_ParticleDescription>
 void Particles<T_ParticleDescription>::deviceCloneFrom( Particles< t_ParticleDescription> &src )
 {
     dim3 block( TILE_SIZE );
 
+   // wrapper_kernelCloneParticles(block,  this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ), this->cellDescription, CORE + BORDER + GUARD);
+/*
     __picKernelArea( kernelCloneParticles, this->cellDescription, CORE + BORDER + GUARD )
         (block) ( this->getDeviceParticlesBox( ), src.getDeviceParticlesBox( ) );
+*/
     log<picLog::SIMULATION_STATE > ( "start clone particles" );
     this->fillAllGaps( );
 
     log<picLog::SIMULATION_STATE > ( "Wait for clone particles finished" );
     __getTransactionEvent( ).waitForFinished( );
+}
+
+template<class FRAME, class Mapping>
+__host__ void wrapper_kernelAddTemperature(dim3 block, ParticlesBox<FRAME, simDim> pb, float_X energy, uint32_t seed, Mapping mapper)
+{
+//    __picKernelArea( kernelAddTemperature, this->cellDescription, CORE + BORDER + GUARD )
+//        (block) ( this->getDeviceParticlesBox( ), energy, seed );
 }
 
 template< typename T_ParticleDescription>
@@ -251,11 +310,28 @@ void Particles<T_ParticleDescription>::deviceAddTemperature( float_X energy )
     uint32_t seed = seedPerRank( globalSeed(), FrameType::CommunicationTag );
     seed ^= TEMPERATURE_SEED;
 
+    //wrapper_kernelAddTemperature(
+/*
     __picKernelArea( kernelAddTemperature, this->cellDescription, CORE + BORDER + GUARD )
         (block) ( this->getDeviceParticlesBox( ), energy, seed );
-
+*/
     log<picLog::SIMULATION_STATE > ( "Wait for addTemperature finished" );
     __getTransactionEvent( ).waitForFinished( );
+}
+
+template< typename ParBox, class Mapping>
+__host__ void wrapper_kernelSetDrift(dim3 block, ParBox pb,
+                               uint32_t offsetY,
+                               const int gNrCellsY,
+                               Mapping mapper)
+{
+/*
+    __picKernelArea( kernelSetDrift, this->cellDescription, CORE + BORDER + GUARD )
+        (block)
+        ( this->particlesBuffer->getDeviceParticleBox( ),
+          simulationYCell,
+          globalNrOfCells.y( ) );
+*/
 }
 
 template< typename T_ParticleDescription>
@@ -274,12 +350,14 @@ void Particles<T_ParticleDescription>::deviceSetDrift( uint32_t currentStep )
     uint32_t simulationYCell = simBox.getGlobalOffset( ).y( ) +
         ( numSlides * localNrOfCells.y( ) );
 
+    //wrapper_kernelSetDrift(
+/*
     __picKernelArea( kernelSetDrift, this->cellDescription, CORE + BORDER + GUARD )
         (block)
         ( this->particlesBuffer->getDeviceParticleBox( ),
           simulationYCell,
           globalNrOfCells.y( ) );
-
+*/
     log<picLog::SIMULATION_STATE > ( "Wait for set drift finished" );
     __getTransactionEvent( ).waitForFinished( );
 }

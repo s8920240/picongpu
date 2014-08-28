@@ -290,11 +290,12 @@ private:
         dim3 block(MappingDesc::SuperCellSize::toRT().toDim3()); /* GPU parallelization */
 
         /* kernel call = sum all particle energies on GPU */
+/*
         __picKernelArea(kernelEnergyParticles, *cellDescription, AREA)
             (block)
             (particles->getDeviceParticlesBox(),
              gEnergy->getDeviceBuffer().getDataBox());
-
+*/
         gEnergy->deviceToHost(); /* get energy from GPU */
 
         double reducedEnergy[2]; /* create storage for kinetic and total energy */

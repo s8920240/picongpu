@@ -256,11 +256,12 @@ private:
 
         gParticle->getDeviceBuffer().setValue(positionParticleTmp);
         dim3 block(SuperCellSize::toRT().toDim3());
-
+/*
         __picKernelArea(kernelPositionsParticles, *cellDescription, AREA)
             (block)
             (particles->getDeviceParticlesBox(),
              gParticle->getDeviceBuffer().getBasePointer());
+*/
         gParticle->deviceToHost();
 
         DataSpace<simDim> localSize(cellDescription->getGridLayout().getDataSpaceWithoutGuarding());
