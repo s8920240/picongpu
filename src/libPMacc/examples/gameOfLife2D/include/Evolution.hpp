@@ -34,157 +34,157 @@
 
 namespace gol
 {
-    namespace kernel
+namespace kernel
+{
+using namespace PMacc;
+
+template<class BoxReadOnly, class BoxWriteOnly, class Mapping>
+__global__ void evolution(BoxReadOnly buffRead,
+                          BoxWriteOnly buffWrite,
+                          uint32_t rule,
+                          Mapping mapper)
+{
+    typedef typename BoxReadOnly::ValueType Type;
+    typedef SuperCellDescription<
+        typename Mapping::SuperCellSize,
+        math::CT::Int< 1, 1 >,
+        math::CT::Int< 1, 1 >
+        > BlockArea;
+    PMACC_AUTO(cache, CachedBox::create < 0, Type > (BlockArea()));
+
+    const Space block(mapper.getSuperCellIndex(Space(blockIdx)));
+    const Space blockCell = block * Mapping::SuperCellSize::toRT();
+    const Space threadIndex(threadIdx);
+    PMACC_AUTO(buffRead_shifted, buffRead.shift(blockCell));
+
+    ThreadCollective<BlockArea> collectiv(threadIndex);
+
+    nvidia::functors::Assign assign;
+    collectiv(
+              assign,
+              cache,
+              buffRead_shifted
+              );
+    __syncthreads();
+
+    Type neighbors = 0;
+    for (uint32_t i = 1; i < 9; ++i)
     {
-        using namespace PMacc;
-
-        template<class BoxReadOnly, class BoxWriteOnly, class Mapping>
-        __global__ void evolution(BoxReadOnly buffRead,
-                                  BoxWriteOnly buffWrite,
-                                  uint32_t rule,
-                                  Mapping mapper)
-        {
-            typedef typename BoxReadOnly::ValueType Type;
-            typedef SuperCellDescription<
-                    typename Mapping::SuperCellSize,
-                    math::CT::Int< 1, 1 >,
-                    math::CT::Int< 1, 1 >
-                    > BlockArea;
-            PMACC_AUTO(cache, CachedBox::create < 0, Type > (BlockArea()));
-
-            const Space block(mapper.getSuperCellIndex(Space(blockIdx)));
-            const Space blockCell = block * Mapping::SuperCellSize::toRT();
-            const Space threadIndex(threadIdx);
-            PMACC_AUTO(buffRead_shifted, buffRead.shift(blockCell));
-
-            ThreadCollective<BlockArea> collectiv(threadIndex);
-
-            nvidia::functors::Assign assign;
-            collectiv(
-                      assign,
-                      cache,
-                      buffRead_shifted
-                      );
-            __syncthreads();
-
-            Type neighbors = 0;
-            for (uint32_t i = 1; i < 9; ++i)
-            {
-                Space offset(Mask::getRelativeDirections<DIM2 > (i));
-                neighbors += cache(threadIndex + offset);
-            }
-
-            Type isLife = cache(threadIndex);
-            isLife = (bool)(((!isLife)*(1 << (neighbors + 9))) & rule) +
-                    (bool)(((isLife)*(1 << (neighbors))) & rule);
-
-            buffWrite(blockCell + threadIndex) = isLife;
-        }
-
-        template<class BoxWriteOnly, class Mapping>
-        __global__ void randomInit(BoxWriteOnly buffWrite,
-                                   uint32_t seed,
-                                   float fraction,
-                                   Mapping mapper)
-        {
-            /* get position in grid in units of SuperCells from blockID */
-            const Space block(mapper.getSuperCellIndex(Space(blockIdx)));
-            /* convert position in unit of cells */
-            const Space blockCell = block * Mapping::SuperCellSize::toRT();
-            /* convert CUDA dim3 to DataSpace<DIM3> */
-            const Space threadIndex(threadIdx);
-            const uint32_t cellIdx = DataSpaceOperations<DIM2>::map(
-                    mapper.getGridSuperCells() * Mapping::SuperCellSize::toRT(),
-                    blockCell + threadIndex);
-
-            /* get uniform random number from seed  */
-            PMACC_AUTO(rng, nvidia::rng::create(
-                                nvidia::rng::methods::Xor(seed, cellIdx),
-                                nvidia::rng::distributions::Uniform_float()));
-
-            /* write 1(white) if uniform random number 0<rng<1 is smaller than 'fraction' */
-            buffWrite(blockCell + threadIndex) = (rng() <= fraction);
-        }
+        Space offset(Mask::getRelativeDirections<DIM2 > (i));
+        neighbors += cache(threadIndex + offset);
     }
 
-    template<class MappingDesc>
-    struct Evolution
+    Type isLife = cache(threadIndex);
+    isLife = (bool)(((!isLife)*(1 << (neighbors + 9))) & rule) +
+        (bool)(((isLife)*(1 << (neighbors))) & rule);
+
+    buffWrite(blockCell + threadIndex) = isLife;
+}
+
+template<class BoxWriteOnly, class Mapping>
+__global__ void randomInit(BoxWriteOnly buffWrite,
+                           uint32_t seed,
+                           float fraction,
+                           Mapping mapper)
+{
+    /* get position in grid in units of SuperCells from blockID */
+    const Space block(mapper.getSuperCellIndex(Space(blockIdx)));
+    /* convert position in unit of cells */
+    const Space blockCell = block * Mapping::SuperCellSize::toRT();
+    /* convert CUDA dim3 to DataSpace<DIM3> */
+    const Space threadIndex(threadIdx);
+    const uint32_t cellIdx = DataSpaceOperations<DIM2>::map(
+                                                            mapper.getGridSuperCells() * Mapping::SuperCellSize::toRT(),
+                                                            blockCell + threadIndex);
+
+    /* get uniform random number from seed  */
+    PMACC_AUTO(rng, nvidia::rng::create(
+                                        nvidia::rng::methods::Xor(seed, cellIdx),
+                                        nvidia::rng::distributions::Uniform_float()));
+
+    /* write 1(white) if uniform random number 0<rng<1 is smaller than 'fraction' */
+    buffWrite(blockCell + threadIndex) = (rng() <= fraction);
+}
+}
+
+template<class MappingDesc>
+struct Evolution
+{
+    MappingDesc mapping;
+    uint32_t rule;
+
+    Evolution(uint32_t rule) : rule(rule)
     {
-        MappingDesc mapping;
-        uint32_t rule;
 
-        Evolution(uint32_t rule) : rule(rule)
-        {
+    }
 
-        }
+    void init(const MappingDesc & desc)
+    {
+        mapping = desc;
+    }
 
-        void init(const MappingDesc & desc)
-        {
-            mapping = desc;
-        }
+    template<class BoxWriteOnly, class Mapping>
+    __host__ void wrapper_randomInit(dim3 grid, dim3 block, BoxWriteOnly buffWrite,
+                                     uint32_t seed,
+                                     float fraction,
+                                     Mapping mapper)
+    {
+        __cudaKernel( (kernel::randomInit<BoxWriteOnly, Mapping>))
+            (grid, block)
+            (
+             buffWrite,
+             seed,
+             fraction,
+             mapper);
 
-        template<class BoxWriteOnly, class Mapping>
-        __host__ void wrapper_randomInit(dim3 grid, dim3 block, BoxWriteOnly buffWrite,
-                                   uint32_t seed,
-                                   float fraction,
-                                   Mapping mapper)
-        {
-            __cudaKernel(kernel::randomInit<BoxWriteOnly,Mapping>)
-                    (grid, block)
-                    (
-                     buffWrite,
-                     seed,
-                     fraction,
-                     mapper);
+    }
 
-	}
+    template<class DBox>
+    void initEvolution(const DBox & writeBox, float fraction)
+    {
+        AreaMapping < CORE + BORDER, MappingDesc > mapper(mapping);
+        GridController<DIM2>& gc = Environment<DIM2>::get().GridController();
+        uint32_t seed = gc.getGlobalSize() + gc.getGlobalRank();
 
-        template<class DBox>
-        void initEvolution(const DBox & writeBox, float fraction)
-        {
-            AreaMapping < CORE + BORDER, MappingDesc > mapper(mapping);
-            GridController<DIM2>& gc = Environment<DIM2>::get().GridController();
-            uint32_t seed = gc.getGlobalSize() + gc.getGlobalRank();
+        wrapper_randomInit(mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3(), writeBox, seed, fraction, mapper);
+        /*
+                    __cudaKernel(kernel::randomInit)
+                            (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
+                            (
+                             writeBox,
+                             seed,
+                             fraction,
+                             mapper);
+         */
+    }
 
-	wrapper_randomInit(mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3(), writeBox,seed, fraction,mapper);
-/*
-            __cudaKernel(kernel::randomInit)
-                    (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
-                    (
-                     writeBox,
-                     seed,
-                     fraction,
-                     mapper);
-*/
-        }
+    template<class BoxReadOnly, class BoxWriteOnly, class Mapping>
+    __host__ void wrapper_evolution(dim3 grid, dim3 block, BoxReadOnly buffRead,
+                                    BoxWriteOnly buffWrite,
+                                    uint32_t rule,
+                                    Mapping mapper)
+    {
+        __cudaKernel( (kernel::evolution<BoxReadOnly, BoxWriteOnly, Mapping>))
+            (grid, block)
+            (buffRead, buffWrite, rule, mapper);
+    }
 
-        template<class BoxReadOnly, class BoxWriteOnly, class Mapping>
-        __host__ void wrapper_evolution(dim3 grid, dim3 block, BoxReadOnly buffRead,
-                                  BoxWriteOnly buffWrite,
-                                  uint32_t rule,
-                                  Mapping mapper)
-        {
-	            __cudaKernel(kernel::evolution<BoxReadOnly,BoxWriteOnly,Mapping>)
-                    (grid, block)
-                    (buffRead, buffWrite, rule, mapper);
-	}
+    template<uint32_t Area, class DBox>
+    void run(const DBox& readBox, const DBox & writeBox)
+    {
+        AreaMapping < Area, MappingDesc > mapper(mapping);
 
-        template<uint32_t Area, class DBox>
-        void run(const DBox& readBox, const DBox & writeBox)
-        {
-            AreaMapping < Area, MappingDesc > mapper(mapping);
-
-	wrapper_evolution(mapper.getGridDim(),  MappingDesc::SuperCellSize::toRT().toDim3(), readBox, writeBox, rule, mapper);
-/*
-            __cudaKernel(kernel::evolution)
-                    (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
-                    (readBox,
-                     writeBox,
-                     rule,
-                     mapper);
-*/
-        }
-    };
+        wrapper_evolution(mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3(), readBox, writeBox, rule, mapper);
+        /*
+                    __cudaKernel(kernel::evolution)
+                            (mapper.getGridDim(), MappingDesc::SuperCellSize::toRT().toDim3())
+                            (readBox,
+                             writeBox,
+                             rule,
+                             mapper);
+         */
+    }
+};
 }
 
 

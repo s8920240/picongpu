@@ -96,6 +96,12 @@ __global__ void kernelSetValue(DataBox data, const T_ValueType value, const Spac
     data(idx) = taskSetValueHelper::getValue(value);
 }
 
+template <class DataBox, typename T_ValueType, typename Space>
+void wrapper_kernelSetValue(dim3 grid,dim3 block, cudaStream_t stream,DataBox data, const T_ValueType value, const Space size)
+{
+      kernelSetValue<DataBox,T_ValueType,Space><<<grid, block, 0, stream >>>(data, value, size);
+}
+
 
 template <class TYPE, unsigned DIM>
 class DeviceBuffer;
@@ -179,8 +185,8 @@ public:
         /* line wise thread blocks*/
         gridSize.x = ceil(double(gridSize.x) / 256.);
 
-        kernelSetValue << <gridSize, 256, 0, this->getCudaStream() >> >
-            (this->destination->getDataBox(), this->value, area_size);
+        wrapper_kernelSetValue(gridSize,256, this->getCudaStream(),
+            this->destination->getDataBox(), this->value, area_size);
 
         this->activate();
     }
@@ -229,8 +235,8 @@ public:
         CUDA_CHECK(cudaMemcpyAsync(
                                    devicePtr, valuePointer_host, sizeof (ValueType),
                                    cudaMemcpyHostToDevice, this->getCudaStream()));
-        kernelSetValue << <gridSize, 256, 0, this->getCudaStream() >> >
-            (this->destination->getDataBox(), devicePtr, area_size);
+        wrapper_kernelSetValue(gridSize, 256,this->getCudaStream(),
+            this->destination->getDataBox(), devicePtr, area_size);
 
         this->activate();
     }
